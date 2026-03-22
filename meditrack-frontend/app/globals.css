@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 248 250 252; /* #F8FAFC */
+    --foreground: 15 23 42; /* #0F172A */
+    --card: 255 255 255; /* #FFFFFF */
+    --card-foreground: 15 23 42;
+    --popover: 255 255 255;
+    --popover-foreground: 15 23 42;
+    --primary: 37 99 235; /* #2563EB */
+    --primary-foreground: 255 255 255;
+    --secondary: 241 245 249; /* slate-100 */
+    --secondary-foreground: 15 23 42;
+    --muted: 241 245 249;
+    --muted-foreground: 100 116 139; /* #64748B */
+    --accent: 241 245 249;
+    --accent-foreground: 15 23 42;
+    --destructive: 220 38 38; /* #DC2626 */
+    --border: 226 232 240; /* #E2E8F0 */
+    --input: 226 232 240;
+    --ring: 37 99 235;
+    --radius: 0.5rem;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+      Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+      "Segoe UI Emoji";
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .modal-enter {
+    animation: fadeIn 0.2s ease-out;
+  }
+}
