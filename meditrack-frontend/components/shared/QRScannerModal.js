@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 
 export default function QRScannerModal({ isOpen, onClose, onScan }) {
   const [error, setError] = useState("");
+  const [cameraError, setCameraError] = useState(false);
   const scannerRef = useRef(null);
 
   useEffect(() => {
@@ -48,6 +49,7 @@ export default function QRScannerModal({ isOpen, onClose, onScan }) {
       )
       .catch((err) => {
         setError("Camera permission denied or camera not found.");
+        setCameraError(true);
         console.error(err);
       });
 
@@ -75,14 +77,33 @@ export default function QRScannerModal({ isOpen, onClose, onScan }) {
         
         <div className="p-5">
           {error ? (
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
+            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600 mb-4">
               {error}
             </div>
-          ) : (
-            <div className="overflow-hidden rounded-xl border-2 border-dashed border-slate-200 bg-slate-50">
+          ) : null}
+          <div className="overflow-hidden rounded-xl border-2 border-dashed border-slate-200 bg-slate-50">
+            {cameraError ? (
+              <div className="flex flex-col gap-3 p-4">
+                <p className="text-red-500 text-sm">
+                  Camera access denied
+                </p>
+                <input
+                  type="text"
+                  placeholder="Enter 10-digit Patient ID manually"
+                  maxLength={10}
+                  className="border rounded-lg p-2 text-sm w-full"
+                  onChange={(e) => {
+                    if (e.target.value.length === 10) {
+                      onScan(e.target.value);
+                      onClose();
+                    }
+                  }}
+                />
+              </div>
+            ) : (
               <div id="qr-reader" className="w-full" />
-            </div>
-          )}
+            )}
+          </div>
           
           <div className="mt-4 text-center text-sm text-slate-500">
             Position the QR code within the frame to scan automatically.

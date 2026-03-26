@@ -72,7 +72,7 @@ const NAV = {
     { label: "Add Record", href: "/dashboard/doctor/records/new", icon: ICONS.Records },
   ],
   STAFF: [
-    { label: "Dashboard", href: "/dashboard/staff/dashboard", icon: ICONS.Dashboard },
+    { label: "Dashboard", href: "/dashboard/staff", icon: ICONS.Dashboard },
     { label: "Register Patient", href: "/dashboard/staff/patients/new", icon: ICONS.Users },
     { label: "Add Record", href: "/dashboard/staff/records/new", icon: ICONS.Records },
   ],

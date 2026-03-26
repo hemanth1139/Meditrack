@@ -38,7 +38,7 @@ export default function AdminUsersPage() {
       setLoading(true);
       const params = { page, limit: 10 };
       if (selectedHospital) params.hospital_id = selectedHospital;
-      if (activeTab !== "all") params.role = activeTab;
+      if (activeTab !== "all") params.role = activeTab.toUpperCase();
       if (query) params.search = query;
 
       const res = await api.get("/users/", { params });

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import Providers from "./providers";
 import { Toaster } from "react-hot-toast";
 import NextTopLoader from "nextjs-toploader";
+import GlobalErrorBoundary from "@/components/shared/ErrorBoundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,7 +21,9 @@ export default function RootLayout({ children }) {
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
         <NextTopLoader color="#2563EB" showSpinner={false} />
-        <Providers>{children}</Providers>
+        <GlobalErrorBoundary>
+          <Providers>{children}</Providers>
+        </GlobalErrorBoundary>
         <Toaster
           position="top-right"
           toastOptions={{

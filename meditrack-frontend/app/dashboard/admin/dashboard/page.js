@@ -2,9 +2,22 @@
 
 import useAnalytics from "@/hooks/useAnalytics";
 import StatsCard from "@/components/analytics/StatsCard";
-import MonthlyActivityChart from "@/components/analytics/MonthlyActivityChart";
-import DiagnosisChart from "@/components/analytics/DiagnosisChart";
-import DoctorPatientChart from "@/components/analytics/DoctorPatientChart";
+import dynamic from "next/dynamic";
+
+const MonthlyActivityChart = dynamic(
+  () => import("@/components/analytics/MonthlyActivityChart"),
+  { ssr: false }
+);
+
+const DiagnosisChart = dynamic(
+  () => import("@/components/analytics/DiagnosisChart"),
+  { ssr: false }
+);
+
+const DoctorPatientChart = dynamic(
+  () => import("@/components/analytics/DoctorPatientChart"),
+  { ssr: false }
+);
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";

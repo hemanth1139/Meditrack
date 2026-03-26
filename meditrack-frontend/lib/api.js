@@ -14,20 +14,14 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // If 401 Unauthorized, attempt a silent token refresh using the HttpOnly refresh cookie
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        await axios.post(`${BASE_URL}/accounts/token/refresh/`, {}, { withCredentials: true });
-        // The backend set a new HttpOnly access cookie automatically.
-        // Retry the original request implicitly!
+        await api.post("/api/auth/refresh/");
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed (token expired natively), force strict logout
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
+        window.location.href = "/login";
         return Promise.reject(refreshError);
       }
     }

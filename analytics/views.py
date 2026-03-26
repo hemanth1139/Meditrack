@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 
+from django.core.cache import cache
 from django.db.models import Count
 from django.utils import timezone
 from rest_framework import permissions, views
@@ -25,6 +26,11 @@ class HospitalAnalyticsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        cache_key = f"analytics_{request.user.role}_{request.user.id}"
+        data = cache.get(cache_key)
+        if data:
+            return api_response(True, data, "Hospital analytics (cached)")
+
         if request.user.role not in ["ADMIN", "HOSPITAL_ADMIN"]:
             return api_response(False, None, "Permission denied")
 
@@ -78,6 +84,7 @@ class HospitalAnalyticsView(views.APIView):
             "top_diagnoses": top_diagnoses,
         }
         serializer = HospitalAnalyticsSerializer(data)
+        cache.set(cache_key, serializer.data, 300)
         return api_response(True, serializer.data, "Hospital analytics")
 
 
@@ -93,6 +100,11 @@ class DoctorAnalyticsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated, IsDoctor]
 
     def get(self, request, *args, **kwargs):
+        cache_key = f"analytics_{request.user.role}_{request.user.id}"
+        data = cache.get(cache_key)
+        if data:
+            return api_response(True, data, "Doctor analytics (cached)")
+
         doctor = request.user
         records_qs = MedicalRecord.objects.filter(created_by=doctor)
         my_patients = Patient.objects.filter(records__created_by=doctor).distinct().count()
@@ -109,5 +121,6 @@ class DoctorAnalyticsView(views.APIView):
             "diagnosis_breakdown": diagnosis_breakdown,
         }
         serializer = DoctorAnalyticsSerializer(data)
+        cache.set(cache_key, serializer.data, 300)
         return api_response(True, serializer.data, "Doctor analytics")
 
