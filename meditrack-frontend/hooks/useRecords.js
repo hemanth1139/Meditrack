@@ -16,7 +16,7 @@ export default function useRecords(params = {}) {
   const qc = useQueryClient();
 
   const recordsQuery = useQuery({
-    queryKey: ["records", params],
+    queryKey: ["records", JSON.stringify(params)],
     queryFn: async () => {
       const res = await api.get("/records/", { params });
       return res.data.data || [];

@@ -111,6 +111,7 @@ if DB_ENGINE.lower() in ["postgres", "postgresql"]:
             "HOST": config("DB_HOST", default="localhost"),
             "PORT": config("DB_PORT", default="5432"),
             "CONN_MAX_AGE": 60,
+            "CONN_HEALTH_CHECKS": True,  # Validate pooled connections before reuse
             "OPTIONS": {"sslmode": "require"},
         }
     }
@@ -132,12 +133,16 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'accounts.validators.StrictPasswordValidator',
     },
 ]
 
@@ -174,12 +179,21 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "common.pagination.StandardResultsSetPagination",
     "PAGE_SIZE": 20,
     "EXCEPTION_HANDLER": "common.exception_handler.custom_exception_handler",
+    # Global API rate limiting (login endpoint has its own stricter throttle)
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/hour",
+        "user": "500/hour",
+    },
 }
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
+    "ROTATE_REFRESH_TOKENS": True,   # Issue new refresh token on each use; blacklist the old one
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_COOKIE": "access_token",
@@ -198,6 +212,20 @@ AUTH_USER_MODEL = "accounts.User"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# ─── Django SecurityMiddleware hardening ────────────────────────────────────
+# Reject HTTP connections and redirect to HTTPS (only enforced when DEBUG=False)
+SECURE_SSL_REDIRECT = not DEBUG
+# Prevent browsers from MIME-sniffing a response away from the declared content-type
+SECURE_CONTENT_TYPE_NOSNIFF = True
+# Enable the browser's XSS auditor (legacy, belt-and-suspenders)
+SECURE_BROWSER_XSS_FILTER = True
+# Tell browsers to only access via HTTPS for 1 year (production only)
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+# Clickjacking protection
+X_FRAME_OPTIONS = "DENY"
+
 STATICFILES_DIRS = []
 
 CLOUDINARY_STORAGE = {
@@ -205,6 +233,14 @@ CLOUDINARY_STORAGE = {
     "API_KEY": config("CLOUDINARY_API_KEY", default=""),
     "API_SECRET": config("CLOUDINARY_API_SECRET", default=""),
 }
+
+import cloudinary
+
+cloudinary.config(
+    cloud_name=config("CLOUDINARY_CLOUD_NAME", default=""),
+    api_key=config("CLOUDINARY_API_KEY", default=""),
+    api_secret=config("CLOUDINARY_API_SECRET", default=""),
+)
 
 _cors_default = "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
 CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default=_cors_default, cast=Csv())

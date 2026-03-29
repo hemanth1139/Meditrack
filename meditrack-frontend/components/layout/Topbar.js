@@ -52,7 +52,16 @@ export default function Topbar({ title, breadcrumb, onToggleSidebar }) {
                 </AvatarFallback>
               </Avatar>
               <div className="hidden max-w-[140px] truncate text-[13px] font-medium text-slate-900 sm:block">
-                {mounted ? ([user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "User") : "User"}
+                {mounted ? (
+                  [user?.first_name, user?.last_name]
+                    .filter(Boolean)
+                    .join(" ") ||
+                  user?.full_name ||
+                  user?.email?.split("@")[0] ||
+                  "User"
+                ) : (
+                  "User"
+                )}
               </div>
             </button>
           </DropdownMenuTrigger>

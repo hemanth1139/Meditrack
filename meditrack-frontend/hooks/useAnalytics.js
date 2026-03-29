@@ -18,7 +18,6 @@ export default function useAnalytics() {
       const res = await api.get("/analytics/hospital/");
       return res.data.data;
     },
-    onError: handleError,
   });
 
   const doctorQuery = useQuery({
@@ -27,7 +26,6 @@ export default function useAnalytics() {
       const res = await api.get("/analytics/doctor/");
       return res.data.data;
     },
-    onError: handleError,
   });
 
   return {

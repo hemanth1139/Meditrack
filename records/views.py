@@ -5,8 +5,10 @@ from rest_framework.decorators import action
 from accounts.permissions import IsAdminUserRole, IsDoctor, IsStaff
 from audit.models import AuditLog
 from common.utils import api_response
-from .models import MedicalRecord, Prescription
-from .serializers import MedicalRecordSerializer
+from .models import MedicalRecord, Prescription, MedicalDocument
+from .serializers import MedicalRecordSerializer, MedicalDocumentSerializer
+from rest_framework.parsers import MultiPartParser
+import cloudinary.uploader
 
 
 class MedicalRecordViewSet(viewsets.ModelViewSet):
@@ -44,6 +46,8 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         prescriptions_data = data.pop("prescriptions", [])
         
+        documents_data = data.pop("documents", [])
+        
         data["created_by_id"] = request.user.id
         data["hospital_id"] = request.user.hospital_id
         serializer = self.get_serializer(data=data)
@@ -55,9 +59,26 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
             Prescription.objects.create(
                 record=record,
                 medicine_name=p_data.get("medicine_name", ""),
+                medicine_type=p_data.get("medicine_type", "TABLET"),
                 dosage=p_data.get("dosage", ""),
-                frequency=p_data.get("frequency", ""),
-                duration=p_data.get("duration", "")
+                frequency=p_data.get("frequency", "OD"),
+                duration_value=p_data.get("duration_value", 1),
+                duration_unit=p_data.get("duration_unit", "Days"),
+                route=p_data.get("route", "ORAL"),
+                special_instructions=p_data.get("special_instructions", ""),
+                refills_allowed=p_data.get("refills_allowed", 0),
+            )
+            
+        # Save documents
+        from .models import MedicalDocument
+        for d_data in documents_data:
+            MedicalDocument.objects.create(
+                record=record,
+                doc_type=d_data.get("doc_type", "OTHER"),
+                label=d_data.get("label", "Document"),
+                cloudinary_url=d_data.get("cloudinary_url", ""),
+                cloudinary_public_id=d_data.get("cloudinary_public_id", ""),
+                file_type=d_data.get("file_type", "pdf")
             )
 
         # Auto-approve if doctor, pending if staff
@@ -163,4 +184,47 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
             ip_address=request.META.get("REMOTE_ADDR"),
         )
         return api_response(True, None, "Record deleted")
+
+
+class MedicalDocumentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for uploading and deleting medical documents via Cloudinary.
+    """
+    queryset = MedicalDocument.objects.all()
+    serializer_class = MedicalDocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
+    def upload(self, request):
+        user = request.user
+        if user.role not in ["DOCTOR", "STAFF"]:
+            return api_response(False, None, "Only staff and doctors can upload documents")
+            
+        file = request.FILES.get('file')
+        if not file:
+            return api_response(False, None, "No file provided")
+            
+        try:
+            # We can rely on Django's cloudinary-storage or call Cloudinary directly
+            upload_data = cloudinary.uploader.upload(file)
+            return api_response(True, {
+                "cloudinary_url": upload_data.get("secure_url"),
+                "cloudinary_public_id": upload_data.get("public_id"),
+            }, "File uploaded successfully")
+        except Exception as e:
+            return api_response(False, None, f"Upload error: {str(e)}")
+
+    def destroy(self, request, *args, **kwargs):
+        doc = self.get_object()
+        user = request.user
+        if user.role not in ["ADMIN", "DOCTOR", "STAFF"]:
+            return api_response(False, None, "Not authorized to delete documents")
+            
+        try:
+            if doc.cloudinary_public_id:
+                cloudinary.uploader.destroy(doc.cloudinary_public_id)
+            doc.delete()
+            return api_response(True, None, "Document deleted")
+        except Exception as e:
+            return api_response(False, None, f"Error deleting document: {str(e)}")
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
+import dynamic from "next/dynamic";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,56 +10,48 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/shared/EmptyState";
 import usePatients from "@/hooks/usePatients";
+import { QrCode } from "lucide-react";
+
+const QRScannerModal = dynamic(() => import("@/components/shared/QRScannerModal"), { ssr: false });
 
 export default function DoctorPatientsPage() {
   const router = useRouter();
-  const { patients, isLoading, searchPatients } = usePatients();
+  const { patients, isLoading } = usePatients();
   const [q, setQ] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const list = useMemo(() => {
     if (!q) return patients || [];
+    const lower = q.toLowerCase();
     return (patients || []).filter((p) =>
-      (p.patient_id || "").toLowerCase().includes(q.toLowerCase())
+      (p.patient_id || "").includes(lower) ||
+      (p.user?.first_name || "").toLowerCase().includes(lower) ||
+      (p.user?.last_name || "").toLowerCase().includes(lower)
     );
   }, [patients, q]);
 
-  const openScanner = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      setScannerOpen(true);
-    } catch {
-      toast.error("Camera permission required");
-    }
+  const handleScan = (patientId) => {
+    if (patientId) router.push(`/dashboard/doctor/patient/${patientId}`);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
         <div className="flex-1">
-          <Input placeholder="Search by patient name or ID" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input
+            placeholder="Search patients by name or ID..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
-        <Button variant="secondary" onClick={openScanner}>
-          Scan QR
+        <Button variant="outline" className="gap-2" onClick={() => setScannerOpen(true)}>
+          <QrCode size={16} /> Scan QR
         </Button>
       </div>
 
-      {scannerOpen ? (
-        <Card className="rounded-lg border-border bg-white p-4 shadow-card">
-          <div className="text-[16px] font-medium text-slate-900">QR Scanner</div>
-          <div className="mt-2 text-[14px] text-slate-600">
-            QR scanning UI uses `html5-qrcode` and can be enabled in a dedicated modal; camera permission is handled.
-          </div>
-          <div className="mt-3">
-            <Button variant="secondary" onClick={() => setScannerOpen(false)}>
-              Close
-            </Button>
-          </div>
-        </Card>
-      ) : null}
-
       {isLoading ? (
         <div className="grid gap-3">
+          <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
         </div>
@@ -69,27 +61,40 @@ export default function DoctorPatientsPage() {
             <Card key={p.patient_id} className="rounded-lg border-border bg-white p-4 shadow-card">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="truncate text-[16px] font-medium text-slate-900">
-                    {p.user || "Patient"}
+                  <div className="truncate text-[16px] font-semibold text-slate-900">
+                    {p.user?.first_name
+                      ? `${p.user.first_name} ${p.user.last_name || ""}`.trim()
+                      : "Patient"}
                   </div>
-                  <div className="mt-1 text-[14px] text-slate-600">
-                    {p.patient_id} • {p.blood_group}
+                  <div className="mt-1 text-[13px] text-slate-500 font-mono">
+                    ID: {p.patient_id}
                   </div>
-                  <div className="mt-1 text-[14px] text-slate-600">
-                    Home hospital: {p.hospital}
+                  <div className="mt-1 text-[13px] text-slate-500">
+                    Blood Group: {p.blood_group} • {p.hospital_name || p.hospital}
                   </div>
                 </div>
-                <Button onClick={() => router.push(`/dashboard/doctor/patients/${p.patient_id}`)}>
-                  View Profile
+                <Button
+                  size="sm"
+                  onClick={() => router.push(`/dashboard/doctor/patient/${p.patient_id}`)}
+                >
+                  View
                 </Button>
               </div>
             </Card>
           ))}
         </div>
       ) : (
-        <EmptyState title="No patients found" description="Try scanning a QR code or searching by patient ID." />
+        <EmptyState
+          title="No patients found"
+          description="Your hospital patients will appear here once assigned."
+        />
       )}
+
+      <QRScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={handleScan}
+      />
     </div>
   );
 }
-

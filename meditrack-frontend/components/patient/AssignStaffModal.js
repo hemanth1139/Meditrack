@@ -79,7 +79,7 @@ export default function AssignStaffModal({ isOpen, onClose, patientId }) {
             )}
           </div>
           <p className="mt-3 text-sm text-slate-500">
-            Assigning a staff member will grant them access to this patient's profile to record vitals.
+            Assigning a staff member will grant them access to this patient&apos;s profile to record vitals.
           </p>
         </div>
         

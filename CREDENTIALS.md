@@ -1,47 +1,74 @@
 # MediTrack — Demo Credentials
 
-These accounts are created by:
+These accounts are created by running the custom reseed command:
 
-- `python manage.py migrate`
-- `python manage.py seed_data`
+- `python manage.py reseed`
 
 ## Super Admin
 
-- **Email**: `admin@meditrack.com`
-- **Password**: `Admin@123`
+- **Username / Email**: `admin` / `admin@meditrack.com`
+- **Password**: `Admin@1234`
 
 ## Hospital Admins
 
-- **Apollo Hospital Chennai**
-  - **Email**: `apollo.admin@meditrack.com`
-  - **Password**: `Hospital@123`
+**Apollo Hospital Chennai**
+- Username: `apollo_admin`
+- Password: `Admin@1234`
 
-- **Fortis Hospital Bangalore**
-  - **Email**: `fortis.admin@meditrack.com`
-  - **Password**: `Hospital@123`
+**Fortis Hospital Bangalore**
+- Username: `fortis_admin`
+- Password: `Admin@1234`
+
+**MIOT Hospital Chennai**
+- Username: `miot_admin`
+- Password: `Admin@1234`
 
 ## Staff
 
-- **Apollo (OPD Reception)**
-  - **Email**: `staff@meditrack.com`
-  - **Password**: `Staff@123`
+**Apollo Staff**
+- Username: `apollo_staff`
+- Password: `Staff@1234`
 
-- **Fortis (Radiology Lab)**
-  - **Email**: `staff2@meditrack.com`
-  - **Password**: `Staff@123`
+**Fortis Staff**
+- Username: `fortis_staff`
+- Password: `Staff@1234`
+
+**MIOT Staff**
+- Username: `miot_staff`
+- Password: `Staff@1234`
 
 ## Doctors
 
-- **Approved Doctor**
-  - **Email**: `doctor@meditrack.com`
-  - **Password**: `Doctor@123`
+**Apollo Doctor**
+- Username: `apollo_doctor`
+- Password: `Doctor@1234`
 
-- **Pending Doctor (should be blocked from login)**
-  - **Email**: `doctor.pending@meditrack.com`
-  - **Password**: `Doctor@123`
+**Fortis Doctor**
+- Username: `fortis_doctor`
+- Password: `Doctor@1234`
 
-## Patient
+**MIOT Doctor**
+- Username: `miot_doctor`
+- Password: `Doctor@1234`
 
-- **Email**: `patient@meditrack.com`
-- **Password**: `Patient@123`
+## Patients
 
+**Patient Hemanth**
+- Username: `patient_hemanth`
+- Password: `Patient@1234`
+
+**Patient Priya**
+- Username: `patient_priya`
+- Password: `Patient@1234`
+
+**Patient Arjun**
+- Username: `patient_arjun`
+- Password: `Patient@1234`
+
+**Patient Kavya**
+- Username: `patient_kavya`
+- Password: `Patient@1234`
+
+**Patient Rohit**
+- Username: `patient_rohit`
+- Password: `Patient@1234`

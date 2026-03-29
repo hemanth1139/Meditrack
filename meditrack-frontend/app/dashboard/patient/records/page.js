@@ -14,7 +14,7 @@ export default function PatientRecordsPage() {
 
   const approved = (records || []).filter((r) => r.status === "APPROVED");
   const filtered = useMemo(() => {
-    const base = approved.sort((a, b) => new Date(b.visit_date) - new Date(a.visit_date));
+    const base = [...approved].sort((a, b) => new Date(b.visit_date) - new Date(a.visit_date));
     if (type === "ALL") return base;
     return base.filter((r) => r.record_type === type);
   }, [approved, type]);

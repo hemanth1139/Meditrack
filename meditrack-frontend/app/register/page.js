@@ -15,10 +15,22 @@ const TAB_ITEMS = [
   { key: "doctor", label: "Doctor" },
 ];
 
+const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(32, "Password must be less than 32 characters")
+  .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Must contain at least one number")
+  .regex(
+    /[^A-Za-z0-9]/,
+    "Must contain at least one special character (!@#$%^&*)"
+  );
+
 const patientSchema = z.object({
   fullName: z.string().min(1, "This field is required"),
   email: z.string().email("Enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: passwordSchema,
   confirmPassword: z.string(),
   phone: z.string().regex(/^\d{10}$/, "Enter a valid 10-digit phone number"),
   dateOfBirth: z.string().min(1, "This field is required"),
@@ -28,7 +40,6 @@ const patientSchema = z.object({
   knownAllergies: z.string().optional(),
   emergencyContactName: z.string().min(1, "This field is required"),
   emergencyContactPhone: z.string().regex(/^\d{10}$/, "Enter a valid 10-digit phone number"),
-  hospitalId: z.string().min(1, "This field is required"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -37,7 +48,7 @@ const patientSchema = z.object({
 const doctorSchema = z.object({
   fullName: z.string().min(1, "This field is required"),
   email: z.string().email("Enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: passwordSchema,
   confirmPassword: z.string(),
   phone: z.string().regex(/^\d{10}$/, "Enter a valid 10-digit phone number"),
   specialization: z.string().min(1, "This field is required"),
@@ -85,6 +96,69 @@ const itemVariants = {
   show: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 24 } },
 };
 
+const getPasswordStrength = (password) => {
+  if (!password) return 0;
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  return score;
+};
+
+const PasswordStrengthIndicator = ({ password }) => {
+  const score = getPasswordStrength(password);
+  const strengthLabels = ["Very Weak", "Very Weak", "Weak", "Fair", "Strong", "Very Strong"];
+  const strengthColors = ["slate", "red", "orange", "yellow", "blue", "green"];
+  
+  const currentLabel = password ? strengthLabels[score] : "";
+  const currentColor = strengthColors[score];
+
+  const reqs = [
+    { label: "At least 8 characters", valid: password?.length >= 8 },
+    { label: "Uppercase letter", valid: /[A-Z]/.test(password) },
+    { label: "Lowercase letter", valid: /[a-z]/.test(password) },
+    { label: "Number", valid: /[0-9]/.test(password) },
+    { label: "Special character", valid: /[^A-Za-z0-9]/.test(password) }
+  ];
+
+  if (!password) return null;
+
+  return (
+    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-2 space-y-2">
+      <div className="flex justify-between items-center text-[12px] font-medium">
+        <span className="text-slate-500">Password strength:</span>
+        <span className={`text-${currentColor}-600`}>{currentLabel}</span>
+      </div>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((level) => (
+          <div
+            key={level}
+            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+              level <= score ? `bg-${currentColor}-500` : "bg-slate-200"
+            }`}
+          />
+        ))}
+      </div>
+      <ul className="text-[11px] space-y-1 mt-2 text-slate-500">
+        {reqs.map((req, idx) => (
+          <li key={idx} className={`flex items-center gap-1.5 ${req.valid ? "text-green-600" : "text-slate-500"}`}>
+            <span className="flex-shrink-0 w-3 h-3 flex items-center justify-center">
+              {req.valid ? (
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-full h-full"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
+              ) : (
+                <div className="w-1.5 h-1.5 rounded-full bg-current opacity-40" />
+              )}
+            </span>
+            {req.label}
+          </li>
+        ))}
+      </ul>
+    </motion.div>
+  );
+};
+
 const InputField = ({ label, error, children }) => (
   <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
     <label className="text-[13px] font-semibold tracking-wide text-slate-700 uppercase">{label}</label>
@@ -121,7 +195,7 @@ export default function RegisterPage() {
     defaultValues: {
       fullName: "", email: "", password: "", confirmPassword: "", phone: "",
       dateOfBirth: "", gender: "", bloodGroup: "", address: "", knownAllergies: "",
-      emergencyContactName: "", emergencyContactPhone: "", hospitalId: "",
+      emergencyContactName: "", emergencyContactPhone: "",
     },
   });
 
@@ -165,7 +239,6 @@ export default function RegisterPage() {
         username: values.email.split("@")[0] || `user${Date.now()}`,
         password: values.password, email: values.email,
         first_name, last_name, phone: values.phone, role: "PATIENT",
-        hospital_id: values.hospitalId ? Number(values.hospitalId) : null,
         date_of_birth: values.dateOfBirth || null, gender: values.gender || null,
         blood_group: values.bloodGroup || null, address: values.address || null,
         known_allergies: values.knownAllergies || null,
@@ -304,9 +377,12 @@ export default function RegisterPage() {
                 <InputField label="Email address" error={patientForm.formState.errors.email?.message}>
                   <input type="email" className={inputClass} {...patientForm.register("email")} />
                 </InputField>
-                <InputField label="Password" error={patientForm.formState.errors.password?.message}>
-                  <input type="password" className={inputClass} {...patientForm.register("password")} />
-                </InputField>
+                <div className="flex flex-col">
+                  <InputField label="Password" error={patientForm.formState.errors.password?.message}>
+                    <input type="password" className={inputClass} {...patientForm.register("password")} />
+                  </InputField>
+                  <PasswordStrengthIndicator password={patientPassword} />
+                </div>
                 <InputField label="Confirm password" error={patientForm.formState.errors.confirmPassword?.message}>
                   <input type="password" className={inputClass} {...patientForm.register("confirmPassword")} />
                 </InputField>
@@ -347,13 +423,6 @@ export default function RegisterPage() {
                   <input type="tel" className={inputClass} {...patientForm.register("emergencyContactPhone")} />
                 </InputField>
               </div>
-
-              <InputField label="Hospital" error={patientForm.formState.errors.hospitalId?.message}>
-                <select className={inputClass} {...patientForm.register("hospitalId")}>
-                  <option value="">{loadingHospitals ? "Loading..." : "Select your hospital"}</option>
-                  {hospitals.map((hospital) => <option key={hospital.id} value={hospital.id}>{hospital.name}</option>)}
-                </select>
-              </InputField>
 
               <motion.div variants={itemVariants} className="pt-4">
                 <motion.button
@@ -413,9 +482,12 @@ export default function RegisterPage() {
                       <InputField label="Email address" error={doctorForm.formState.errors.email?.message}>
                         <input type="email" className={inputClass} {...doctorForm.register("email")} />
                       </InputField>
-                      <InputField label="Password" error={doctorForm.formState.errors.password?.message}>
-                        <input type="password" className={inputClass} {...doctorForm.register("password")} />
-                      </InputField>
+                      <div className="flex flex-col">
+                        <InputField label="Password" error={doctorForm.formState.errors.password?.message}>
+                          <input type="password" className={inputClass} {...doctorForm.register("password")} />
+                        </InputField>
+                        <PasswordStrengthIndicator password={doctorPassword} />
+                      </div>
                       <InputField label="Confirm password" error={doctorForm.formState.errors.confirmPassword?.message}>
                         <input type="password" className={inputClass} {...doctorForm.register("confirmPassword")} />
                       </InputField>

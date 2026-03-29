@@ -48,7 +48,6 @@ class RegisterSerializer(serializers.Serializer):
                 raise serializers.ValidationError(f"Missing doctor fields: {', '.join(missing)}")
         if role == User.Roles.PATIENT:
             required = [
-                "hospital_id",
                 "date_of_birth",
                 "gender",
                 "blood_group",
@@ -77,7 +76,7 @@ class RegisterSerializer(serializers.Serializer):
 
         password = validated_data.pop("password")
         hospital = None
-        if hospital_id:
+        if hospital_id and role != User.Roles.PATIENT:
             hospital = Hospital.objects.get(id=hospital_id)
         patient_fields = [
             "date_of_birth",

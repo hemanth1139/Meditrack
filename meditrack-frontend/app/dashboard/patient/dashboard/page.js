@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import StatsCard from "@/components/analytics/StatsCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StatsCardSkeleton, ListSkeleton } from "@/components/shared/SkeletonDashboard";
 import useRecords from "@/hooks/useRecords";
 import { getUser } from "@/lib/auth";

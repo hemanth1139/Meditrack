@@ -76,9 +76,6 @@ export default function AdminDoctorsPage() {
     load();
   }, [loadHospitals, load]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const approve = async (doc) => {
     if (!confirm(`Approve ${doc.user?.email || "this doctor"}?`)) return;

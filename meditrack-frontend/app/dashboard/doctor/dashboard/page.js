@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { QrCode } from "lucide-react";
+
 import StatsCard from "@/components/analytics/StatsCard";
-import MonthlyActivityChart from "@/components/analytics/MonthlyActivityChart";
-import DiagnosisChart from "@/components/analytics/DiagnosisChart";
 import PatientSearch from "@/components/doctor/PatientSearch";
 import useAnalytics from "@/hooks/useAnalytics";
 import { Card } from "@/components/ui/card";
@@ -11,11 +13,11 @@ import { Button } from "@/components/ui/button";
 import useRecords from "@/hooks/useRecords";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { formatDate } from "@/lib/utils";
-import dynamic from "next/dynamic";
-const QRScannerModal = dynamic(() => import("@/components/shared/QRScannerModal"), { ssr: false });
-import { useRouter } from "next/navigation";
-import { QrCode } from "lucide-react";
 import { DashboardPageSkeleton } from "@/components/shared/SkeletonDashboard";
+
+const MonthlyActivityChart = dynamic(() => import("@/components/analytics/MonthlyActivityChart"), { ssr: false });
+const DiagnosisChart = dynamic(() => import("@/components/analytics/DiagnosisChart"), { ssr: false });
+const QRScannerModal = dynamic(() => import("@/components/shared/QRScannerModal"), { ssr: false });
 
 export default function DoctorDashboardPage() {
   const { doctorStats, isLoading } = useAnalytics();

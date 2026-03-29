@@ -45,7 +45,11 @@ export default function QRCodeDisplay({ value, patient }) {
       {/* QR Code area */}
       <div className="flex flex-col items-center gap-4 bg-white p-6">
         <div className="rounded-xl border-2 border-blue-100 bg-white p-4 shadow-sm">
-          <QRCode id="patient-qr" value={value} size={qrSize} />
+          <QRCode 
+            id="patient-qr" 
+            value={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/qr/${value}`} 
+            size={qrSize} 
+          />
         </div>
 
         {/* Patient info */}

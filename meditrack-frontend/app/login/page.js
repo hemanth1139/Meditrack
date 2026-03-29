@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import useAuth from "@/hooks/useAuth";
 
 const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+  email: z.string().min(1, "Username or Email is required"),
   password: z.string().min(1, "Password is required").min(6, "Password must be at least 6 characters"),
 });
 
@@ -134,10 +134,10 @@ export default function LoginPage() {
         >
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <motion.div variants={itemVariants} className="space-y-2">
-              <label className="text-[13px] font-semibold tracking-wide text-slate-700 uppercase">Email address</label>
+              <label className="text-[13px] font-semibold tracking-wide text-slate-700 uppercase">Username or Email</label>
               <div className="group relative">
                 <Input
-                  placeholder="you@example.com"
+                  placeholder="username or you@example.com"
                   className="h-12 border-slate-200/80 bg-white/50 px-4 text-[15px] shadow-sm transition-all duration-300 focus-visible:border-blue-500 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-blue-500/10 placeholder:text-slate-400"
                   {...register("email")}
                 />

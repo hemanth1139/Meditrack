@@ -1,18 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function SearchBar({ placeholder = "Search...", defaultValue = "", onSearch }) {
   const [query, setQuery] = useState(defaultValue);
+  const onSearchRef = useRef(onSearch);
+
+  // Keep ref up to date without triggering re-renders
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      onSearch(query);
+      onSearchRef.current(query);
     }, 500);
     return () => clearTimeout(timer);
-  }, [query, onSearch]);
+  }, [query]); // only re-run when the actual query string changes
 
   return (
     <div className="relative w-full max-w-sm">

@@ -10,8 +10,8 @@ class LoginSerializer(TokenObtainPairSerializer):
     Ensures doctor must be approved to log in.
     """
 
-    # Frontend sends email/password.
-    email = serializers.EmailField(required=False)
+    # Accepts either a username or an email address.
+    email = serializers.CharField(required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

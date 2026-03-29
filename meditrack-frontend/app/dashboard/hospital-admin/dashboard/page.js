@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 
 import api from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import StatsCard from "@/components/analytics/StatsCard";
-import MonthlyActivityChart from "@/components/analytics/MonthlyActivityChart";
-import DiagnosisChart from "@/components/analytics/DiagnosisChart";
+const MonthlyActivityChart = dynamic(() => import("@/components/analytics/MonthlyActivityChart"), { ssr: false });
+const DiagnosisChart = dynamic(() => import("@/components/analytics/DiagnosisChart"), { ssr: false });
 import StatusBadge from "@/components/shared/StatusBadge";
 import { getUser } from "@/lib/auth";
 

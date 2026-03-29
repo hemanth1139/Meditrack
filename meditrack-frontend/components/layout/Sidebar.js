@@ -194,7 +194,12 @@ export default function Sidebar({
             </Avatar>
             <div className="min-w-0">
               <div className="truncate text-[13px] font-semibold text-slate-900">
-                {[user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "User"}
+                {[user?.first_name, user?.last_name]
+                  .filter(Boolean)
+                  .join(" ") ||
+                  user?.full_name ||
+                  user?.email?.split("@")[0] ||
+                  "User"}
               </div>
               <div className="mt-0.5">
                 <span className="rounded-full bg-blue-100 px-2 py-px text-[11px] font-semibold text-blue-700">

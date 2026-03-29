@@ -7,7 +7,6 @@ import api from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import StatusBadge from "@/components/shared/StatusBadge";
 
 function shortHash(h) {
   if (!h) return "—";

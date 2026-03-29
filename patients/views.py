@@ -20,6 +20,30 @@ from .serializers import OTPConsentRequestSerializer, OTPVerifySerializer, Patie
 
 
 from rest_framework import filters
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+class PatientLookupView(APIView):
+    """
+    Publicly accessible endpoint (for authenticated staff/doctors) to look up a patient's name
+    and blood group just by their 10-digit ID, without requiring full access to their profile.
+    Used for live preview in the QRScanner manual entry modal.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        patient_id = request.query_params.get("patient_id")
+        if not patient_id:
+            return Response({"error": "patient_id required"}, status=400)
+        try:
+            patient = Patient.objects.select_related("user").get(patient_id=patient_id)
+            return Response({
+                "patient_id": patient.patient_id,
+                "full_name": patient.user.get_full_name(),
+                "blood_group": patient.blood_group,
+            })
+        except Patient.DoesNotExist:
+            return Response({"error": "Patient not found"}, status=404)
 
 class PatientViewSet(viewsets.ModelViewSet):
     """
@@ -38,9 +62,9 @@ class PatientViewSet(viewsets.ModelViewSet):
     search_fields = ["patient_id", "user__first_name", "user__last_name", "user__email", "user__phone"]
 
     def get_permissions(self):
-        if self.action in ["create", "list"]:
+        if self.action in ["create"]:
             return [permissions.IsAuthenticated(), (IsStaff | IsDoctor)()]
-        if self.action in ["retrieve", "qr", "export_pdf", "profile"]:
+        if self.action in ["list", "retrieve", "qr", "export_pdf", "profile"]:
             return [permissions.IsAuthenticated()]
         if self.action in ["request_access", "verify_otp", "assign_staff"]:
             return [permissions.IsAuthenticated(), IsDoctor()]
@@ -131,10 +155,30 @@ class PatientViewSet(viewsets.ModelViewSet):
         if user.role == "PATIENT":
             records = records.filter(status=MedicalRecord.Status.APPROVED)
             
+        all_records = records.all()
+        
+        # Calculate Quick Stats
+        total_visits = all_records.count()
+        last_visit = all_records.first().visit_date if total_visits > 0 else None
+        
+        from records.models import Prescription, MedicalDocument
+        active_prescriptions = Prescription.objects.filter(record__in=all_records).count()
+        pending_labs = all_records.filter(visit_type="LAB_TEST", status="PENDING").count()
+
+        all_documents = MedicalDocument.objects.filter(record__in=all_records).order_by("-uploaded_at")
+        from records.serializers import MedicalDocumentSerializer
+            
         return api_response(True, {
             "patient": patient_data,
             "vitals": VitalsSerializer(vitals, many=True).data,
-            "records": MedicalRecordSerializer(records, many=True).data
+            "records": MedicalRecordSerializer(all_records, many=True).data,
+            "documents": MedicalDocumentSerializer(all_documents, many=True).data,
+            "stats": {
+                "total_visits": total_visits,
+                "last_visit": last_visit,
+                "active_prescriptions": active_prescriptions,
+                "pending_labs": pending_labs
+            }
         }, "Patient profile fetched")
 
     @action(detail=True, methods=["post"], url_path="add-vitals")
@@ -362,8 +406,8 @@ class PatientViewSet(viewsets.ModelViewSet):
                 p.showPage()
                 y = height - 20 * mm
                 p.setFont("Helvetica", 9)
-            p.drawString(20 * mm, y, record.visit_date.isoformat())
-            p.drawString(50 * mm, y, record.record_type)
+            p.drawString(20 * mm, y, record.visit_date.isoformat() if hasattr(record.visit_date, "isoformat") else str(record.visit_date))
+            p.drawString(50 * mm, y, record.visit_type)
             p.drawString(80 * mm, y, (record.diagnosis or "")[:40])
             p.drawString(140 * mm, y, record.status)
             y -= 6 * mm
