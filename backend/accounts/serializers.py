@@ -1,0 +1,217 @@
+from django.contrib.auth import get_user_model
+from rest_framework import serializers
+
+from hospitals.models import Hospital
+from patients.models import Patient
+
+
+User = get_user_model()
+
+
+class RegisterSerializer(serializers.Serializer):
+    """
+    Serializer used for patient and doctor self-registration.
+    Creates a User (and DoctorProfile if doctor).
+    """
+
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    email = serializers.EmailField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    phone = serializers.CharField()
+    role = serializers.ChoiceField(choices=[User.Roles.PATIENT, User.Roles.DOCTOR])
+    hospital_id = serializers.IntegerField(required=False, allow_null=True)
+    specialization = serializers.CharField(required=False, allow_blank=True)
+    qualification = serializers.CharField(required=False, allow_blank=True)
+    department = serializers.CharField(required=False, allow_blank=True)
+    medical_reg_number = serializers.CharField(required=False, allow_blank=True)
+    medical_council = serializers.CharField(required=False, allow_blank=True)
+    years_of_experience = serializers.IntegerField(required=False)
+    # patient profile fields (required when role=PATIENT)
+    date_of_birth = serializers.DateField(required=False)
+    gender = serializers.CharField(required=False)
+    blood_group = serializers.CharField(required=False)
+    address = serializers.CharField(required=False)
+    known_allergies = serializers.CharField(required=False, allow_blank=True)
+    emergency_contact_name = serializers.CharField(required=False)
+    emergency_contact_phone = serializers.CharField(required=False)
+
+    def validate(self, attrs):
+        role = attrs.get("role")
+        if role not in [User.Roles.PATIENT, User.Roles.DOCTOR]:
+            raise serializers.ValidationError("Only patient and doctor registration is allowed.")
+        if role == User.Roles.DOCTOR:
+            required = ["specialization", "qualification", "department", "medical_reg_number", "medical_council"]
+            missing = [f for f in required if not attrs.get(f)]
+            if missing:
+                raise serializers.ValidationError(f"Missing doctor fields: {', '.join(missing)}")
+        if role == User.Roles.PATIENT:
+            required = [
+                "date_of_birth",
+                "gender",
+                "blood_group",
+                "address",
+                "emergency_contact_name",
+                "emergency_contact_phone",
+            ]
+            missing = [f for f in required if not attrs.get(f)]
+            if missing:
+                raise serializers.ValidationError(f"Missing patient fields: {', '.join(missing)}")
+        return attrs
+
+    def create(self, validated_data):
+        hospital_id = validated_data.pop("hospital_id", None)
+        role = validated_data.pop("role")
+
+        doctor_fields = [
+            "specialization",
+            "qualification",
+            "department",
+            "medical_reg_number",
+            "medical_council",
+            "years_of_experience",
+        ]
+        doctor_data = {k: validated_data.pop(k) for k in list(validated_data.keys()) if k in doctor_fields}
+
+        password = validated_data.pop("password")
+        hospital = None
+        if hospital_id and role != User.Roles.PATIENT:
+            hospital = Hospital.objects.get(id=hospital_id)
+        patient_fields = [
+            "date_of_birth",
+            "gender",
+            "blood_group",
+            "address",
+            "known_allergies",
+            "emergency_contact_name",
+            "emergency_contact_phone",
+        ]
+        patient_data = {k: validated_data.pop(k) for k in list(validated_data.keys()) if k in patient_fields}
+
+        user = User.objects.create(
+            role=role,
+            hospital=hospital,
+            is_active=True,
+            **validated_data,
+        )
+        user.set_password(password)
+        if role == User.Roles.DOCTOR:
+            user.is_verified = False
+        if role == User.Roles.PATIENT:
+            user.is_verified = True
+        user.save()
+        if role == User.Roles.DOCTOR:
+            pass  # Fields are automatically created on User now
+        if role == User.Roles.PATIENT:
+            gender_map = {"Male": "M", "Female": "F", "Other": "O", "M": "M", "F": "F", "O": "O"}
+            g = patient_data.get("gender")
+            patient_data["gender"] = gender_map.get(g, g)
+            Patient.objects.create(user=user, hospital=hospital, is_profile_complete=True, **patient_data)
+        return user
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Serializer for listing and updating users."""
+
+    department = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "role",
+            "hospital",
+            "hospital_id",
+            "is_verified",
+            "department",
+            "created_at",
+            "specialization",
+            "medical_reg_number",
+            "status",
+        )
+        read_only_fields = ("id", "role", "is_verified", "status")
+
+    def get_department(self, obj):
+        return getattr(obj, "department", None)
+
+    def get_created_at(self, obj):
+        return obj.date_joined.isoformat() if obj.date_joined else None
+
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
+from django.contrib.auth import authenticate
+
+class LoginSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        # Support login by either email or username
+        login_input = attrs.get(self.username_field, "")
+        password = attrs.get("password", "")
+
+        user = None
+
+        # Try email lookup first
+        if "@" in login_input:
+            try:
+                matched = User.objects.get(email__iexact=login_input)
+                # Verify password manually
+                if matched.check_password(password) and matched.is_active:
+                    user = matched
+            except User.DoesNotExist:
+                pass
+
+        # Fall back to username lookup via default simplejwt flow
+        if user is None:
+            try:
+                data = super().validate(attrs)
+            except Exception:
+                raise AuthenticationFailed("No active account found with the given credentials.")
+            data['id'] = self.user.id
+            data['email'] = self.user.email
+            data['role'] = self.user.role
+            data['first_name'] = self.user.first_name
+            data['last_name'] = self.user.last_name
+            data['hospital_id'] = getattr(self.user, 'hospital_id', None)
+            return data
+
+        # Email-matched user: issue tokens manually
+        from rest_framework_simplejwt.tokens import RefreshToken
+        self.user = user
+        refresh = RefreshToken.for_user(user)
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'id': user.id,
+            'email': user.email,
+            'role': user.role,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'hospital_id': getattr(user, 'hospital_id', None),
+        }
+
+from .models import AuditLog, Notification
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            "id", "timestamp", "user", "action", "target_model",
+            "target_id", "description", "ip_address"
+        ]
+
+    def get_user(self, obj):
+        return obj.user.email if obj.user else "System"
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ["id", "message", "notification_type", "is_read", "created_at"]

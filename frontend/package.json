@@ -1,0 +1,55 @@
+{
+  "name": "meditrack-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=512 next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-label": "^2.1.8",
+    "@tanstack/react-query": "^5.91.0",
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
+    "axios": "^1.13.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "js-cookie": "^3.0.5",
+    "lucide-react": "^0.577.0",
+    "next": "^16.2.2",
+    "nextjs-toploader": "^3.9.17",
+    "qrcode.react": "^4.2.0",
+    "radix-ui": "^1.4.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-hook-form": "^7.71.2",
+    "react-hot-toast": "^2.6.0",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@next/bundle-analyzer": "^16.2.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "cross-env": "^10.1.0",
+    "eslint": "^8",
+    "eslint-config-next": "^16.2.2",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1"
+  },
+  "presets": [
+    "next/babel"
+  ],
+  "eslint.workingDirectories": [
+    {
+      "mode": "auto"
+    },
+    {
+      "directory": "./meditrack-frontend",
+      "changeProcessCWD": true
+    }
+  ]
+}
