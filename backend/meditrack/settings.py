@@ -209,3 +209,9 @@ FIELD_ENCRYPTION_KEY = config(
     "FIELD_ENCRYPTION_KEY",
     default="qxQKF1QWtZcSfawgBBGl5_ffgTrIbhpKy6tFeacax2k=",
 )
+
+# Authentication Security Limits (Django-Axes)
+# Increased to 100 to prevent lockout during testing and demos.
+AXES_FAILURE_LIMIT = 100
+AXES_PROXY_COUNT = 1 # Recommended if running behind normal reverse proxies
+AXES_RESET_ON_SUCCESS = True # Resets the counter if they eventually guess correct
