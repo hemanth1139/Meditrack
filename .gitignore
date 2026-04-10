@@ -24,6 +24,8 @@ db.sqlite3
 db.sqlite3-journal
 staticfiles/
 mediafiles/
+media/
+backend/media/
 
 # Secrets — NEVER commit these
 .env
@@ -31,11 +33,11 @@ mediafiles/
 !.env.example
 
 # ── Node / Next.js ───────────────────────────────────────────
-meditrack-frontend/.next/
-meditrack-frontend/node_modules/
-meditrack-frontend/.env.local
-meditrack-frontend/.env*.local
-!meditrack-frontend/.env.local.example
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+frontend/.env*.local
+!frontend/.env.local.example
 
 # ── OS / Editor ──────────────────────────────────────────────
 .DS_Store
