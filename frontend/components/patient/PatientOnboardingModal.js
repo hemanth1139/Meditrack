@@ -3,12 +3,9 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import usePatients from "@/hooks/usePatients";
 
 const formSchema = z.object({
@@ -42,64 +39,65 @@ export default function PatientOnboardingModal({ isOpen, onSuccess }) {
       if (!data.known_allergies) data.known_allergies = "None";
       await completeProfile(data);
       onSuccess();
-    } catch (e) {
-      // handled by usePatients
-    }
+    } catch (e) {}
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent 
-        className="sm:max-w-[500px]" 
-        onInteractOutside={(e) => e.preventDefault()} 
-        onEscapeKeyDown={(e) => e.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle>Complete Your Profile</DialogTitle>
-          <DialogDescription>
-            Please provide your emergency contact and medical details to continue using MediTrack.
-          </DialogDescription>
-        </DialogHeader>
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {}} // Cannot close until completed
+      title="Complete Your Profile"
+      footer={
+        <div className="w-full flex justify-end">
+          <Button type="submit" form="onboarding-form" disabled={isCompletingProfile} loading={isCompletingProfile}>
+            Save Profile
+          </Button>
+        </div>
+      }
+    >
+      <form id="onboarding-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
+        <p className="text-sm text-gray-500 mb-4">
+          Please provide your emergency contact and medical details to continue using MediTrack.
+        </p>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Blood Group</Label>
-            <Input {...register("blood_group")} placeholder="e.g. O+, A-, B+" />
-            {errors.blood_group && <span className="text-xs text-red-500">{errors.blood_group.message}</span>}
+        <div className="space-y-4">
+          <Input 
+            label="Blood Group" 
+            placeholder="e.g. O+, A-, B+" 
+            error={errors.blood_group?.message} 
+            {...register("blood_group")} 
+          />
+          <div className="flex flex-col gap-1.5 w-full">
+             <label className="text-sm font-medium text-gray-700">Home Address</label>
+             <textarea 
+               {...register("address")} 
+               className={`flex w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]`} 
+             />
+             {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address.message}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label>Home Address</Label>
-            <Textarea {...register("address")} placeholder="Full address" />
-            {errors.address && <span className="text-xs text-red-500">{errors.address.message}</span>}
+          <div className="grid grid-cols-2 gap-4">
+            <Input 
+              label="Emergency Contact Name" 
+              placeholder="Name" 
+              error={errors.emergency_contact_name?.message} 
+              {...register("emergency_contact_name")} 
+            />
+            <Input 
+              label="Emergency Contact Phone" 
+              placeholder="Phone number" 
+              error={errors.emergency_contact_phone?.message} 
+              {...register("emergency_contact_phone")} 
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Emergency Contact Name</Label>
-              <Input {...register("emergency_contact_name")} placeholder="Name" />
-              {errors.emergency_contact_name && <span className="text-xs text-red-500">{errors.emergency_contact_name.message}</span>}
-            </div>
-            <div className="space-y-2">
-              <Label>Emergency Contact Phone</Label>
-              <Input {...register("emergency_contact_phone")} placeholder="Phone number" />
-              {errors.emergency_contact_phone && <span className="text-xs text-red-500">{errors.emergency_contact_phone.message}</span>}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Known Allergies (Optional)</Label>
-            <Input {...register("known_allergies")} placeholder="e.g. Penicillin, Peanuts (or leave blank)" />
-          </div>
-
-          <div className="pt-4 flex justify-end">
-            <Button type="submit" disabled={isCompletingProfile} className="w-full sm:w-auto">
-              {isCompletingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Profile
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+          <Input 
+            label="Known Allergies (Optional)" 
+            placeholder="e.g. Penicillin, Peanuts (or leave blank)" 
+            {...register("known_allergies")} 
+          />
+        </div>
+      </form>
+    </Modal>
   );
 }

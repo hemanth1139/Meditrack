@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
-import { X, Camera, Keyboard } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Camera, Keyboard, X } from "lucide-react";
 
 export default function QRScannerModal({ isOpen, onClose, onScan }) {
-  const scannerRef = useRef(null);
   const html5QrRef = useRef(null);
   const [error, setError] = useState(null);
   const [manualId, setManualId] = useState("");
@@ -18,9 +18,7 @@ export default function QRScannerModal({ isOpen, onClose, onScan }) {
 
   // Stable onScan/onClose refs to avoid re-triggering effect
   const onScanRef = useRef(onScan);
-  const onCloseRef = useRef(onClose);
   useEffect(() => { onScanRef.current = onScan; }, [onScan]);
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
   // Fetch patient preview when 10-digit ID is typed
   const { data: patientPreview, isLoading: isLooking } = useQuery({
@@ -70,7 +68,7 @@ export default function QRScannerModal({ isOpen, onClose, onScan }) {
             }
             controls.stop();
             onScanRef.current(patientId);
-            onCloseRef.current();
+            onClose();
           }
         }
       );
@@ -79,7 +77,6 @@ export default function QRScannerModal({ isOpen, onClose, onScan }) {
 
       setIsStarted(true);
     } catch (err) {
-      console.error("QR start error:", err);
       if (err?.name === "NotAllowedError" || String(err).includes("permission")) {
         setError("Camera permission denied. Please allow camera access in your browser settings.");
       } else if (err?.name === "NotFoundError" || String(err).includes("No camera")) {
@@ -88,13 +85,12 @@ export default function QRScannerModal({ isOpen, onClose, onScan }) {
         setError("Could not start camera. Use manual ID entry below.");
       }
     }
-  }, [isOpen, tab, stopScanner]);
+  }, [isOpen, tab, stopScanner, onClose]);
 
   // Start camera when modal opens on camera tab
   useEffect(() => {
     let t;
     if (isOpen && tab === "camera") {
-      // Loop until DOM element exists, then start
       const checkElement = () => {
         if (document.getElementById("qr-reader-direct")) {
           startScanner();
@@ -137,138 +133,122 @@ export default function QRScannerModal({ isOpen, onClose, onScan }) {
     setTab(newTab);
   };
 
-  if (!isOpen) return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-      onClick={onClose}
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Find Patient"
+      footer={
+        <div className="w-full flex justify-end">
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+        </div>
+      }
     >
-      <div
-        className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-center px-5 pt-5 pb-3">
-          <h2 className="text-lg font-bold text-slate-800">Find Patient</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 p-1.5 transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-slate-100 mx-5 mb-0">
-          <button
-            onClick={() => handleTabChange("camera")}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
-              tab === "camera"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <Camera size={14} /> Scan QR
-          </button>
-          <button
-            onClick={() => handleTabChange("manual")}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
-              tab === "manual"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <Keyboard size={14} /> Enter ID
-          </button>
-        </div>
-
-        <div className="p-5">
-          {tab === "camera" ? (
-            <div>
-              {error ? (
-                <div className="text-center p-5 bg-red-50 rounded-xl border border-red-100">
-                  <p className="text-red-500 text-sm font-medium">{error}</p>
-                  <button
-                    onClick={() => { setError(null); startScanner(); }}
-                    className="mt-3 text-xs text-blue-600 underline"
-                  >
-                    Try again
-                  </button>
-                </div>
-              ) : (
-                <div className="overflow-hidden rounded-xl border-2 border-dashed border-slate-200 bg-slate-900 flex items-center justify-center min-h-[260px] relative">
-                  <video id="qr-reader-direct" className="w-full" />
-                  {!isStarted && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white/70 gap-2">
-                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      <span className="text-xs">Starting camera...</span>
-                    </div>
-                  )}
-                </div>
-              )}
-              <p className="text-center text-xs text-slate-400 mt-3">
-                Point your camera at a patient&apos;s QR code
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold uppercase text-slate-500 tracking-wider block mb-2">
-                  Patient ID
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter 10-digit Patient ID"
-                    maxLength={10}
-                    value={manualId}
-                    onChange={handleIdChange}
-                    autoFocus
-                    onKeyDown={(e) => e.key === "Enter" && handleManualSubmit()}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:border-blue-500 focus:ring-blue-500/20 transition-all font-mono"
-                  />
-                  <Button
-                    onClick={handleManualSubmit}
-                    disabled={manualId.length !== 10}
-                    className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 px-5"
-                  >
-                    Go
-                  </Button>
-                </div>
-              </div>
-
-              {/* Patient preview */}
-              {lookupId.length === 10 && (
-                <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
-                  {isLooking ? (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full border-2 border-slate-200 border-t-blue-500 animate-spin" />
-                      <p className="text-sm text-slate-500">Looking up patient...</p>
-                    </div>
-                  ) : patientPreview?.full_name ? (
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-bold text-base border border-green-200">
-                        {patientPreview.full_name?.[0]?.toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-800">{patientPreview.full_name}</p>
-                        <p className="text-xs text-slate-500 font-mono">Blood: {patientPreview.blood_group || "—"}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-red-500">
-                      <X size={14} />
-                      <p className="text-sm font-medium">Patient not found</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+      <div className="-mx-6 border-b border-gray-100 flex mb-4 px-6">
+        <button
+          onClick={() => handleTabChange("camera")}
+          className={`flex items-center gap-2 pb-3 px-2 text-sm font-semibold transition-colors relative ${
+            tab === "camera"
+              ? "text-blue-600"
+              : "text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          <Camera size={14} /> Scan QR
+          {tab === "camera" && <div className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-blue-600" />}
+        </button>
+        <button
+          onClick={() => handleTabChange("manual")}
+          className={`flex items-center gap-2 pb-3 px-4 text-sm font-semibold transition-colors relative ml-4 ${
+            tab === "manual"
+              ? "text-blue-600"
+              : "text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          <Keyboard size={14} /> Enter ID
+          {tab === "manual" && <div className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-blue-600" />}
+        </button>
       </div>
-    </div>,
-    document.body
+
+      <div className="py-2">
+        {tab === "camera" ? (
+          <div>
+            {error ? (
+              <div className="text-center py-6 bg-red-50 rounded-xl border border-red-100 mb-2">
+                <p className="text-red-500 text-sm font-medium">{error}</p>
+                <button
+                  onClick={() => { setError(null); startScanner(); }}
+                  className="mt-3 text-xs text-blue-600 underline font-medium"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-900 flex items-center justify-center min-h-[260px] relative mb-2">
+                <video id="qr-reader-direct" className="w-full object-cover" />
+                {!isStarted && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/70 gap-3">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <span className="text-xs font-medium tracking-wide">Starting camera...</span>
+                  </div>
+                )}
+              </div>
+            )}
+            <p className="text-center text-xs text-gray-400 font-medium pb-2">
+              Point your camera at a patient&apos;s QR code to scan.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Input
+                  label="Patient ID"
+                  placeholder="Enter 10-digit ID"
+                  maxLength={10}
+                  value={manualId}
+                  onChange={handleIdChange}
+                  onKeyDown={(e) => e.key === "Enter" && handleManualSubmit()}
+                  autoFocus
+                />
+              </div>
+              <Button
+                onClick={handleManualSubmit}
+                disabled={manualId.length !== 10}
+              >
+                Go
+              </Button>
+            </div>
+
+            {/* Patient preview */}
+            {lookupId.length === 10 && (
+              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                {isLooking ? (
+                  <div className="flex items-center gap-2 text-gray-500 font-medium text-sm">
+                    <div className="h-4 w-4 rounded-full border-2 border-gray-200 border-t-blue-500 animate-spin" />
+                    Looking up patient...
+                  </div>
+                ) : patientPreview?.full_name ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-bold border border-green-200 shrink-0">
+                      {patientPreview.full_name?.[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">{patientPreview.full_name}</p>
+                      <p className="text-xs text-gray-500 font-medium">Blood Group: {patientPreview.blood_group || "—"}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-red-500 font-medium text-sm">
+                    <X size={16} />
+                    Patient not found. Check the ID.
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="h-4" /> {/* Spacer */}
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }

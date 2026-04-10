@@ -3,7 +3,7 @@ import { serverFetch } from "@/lib/serverApi";
 
 export default async function AdminUsersPage() {
   const [usersResponse, hospitalsResponse] = await Promise.all([
-    serverFetch("/users/?limit=10").catch(() => null),
+    serverFetch("/users/?limit=1000").catch(() => null),
     serverFetch("/hospitals/").catch(() => null),
   ]);
 

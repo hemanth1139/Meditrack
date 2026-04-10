@@ -6,13 +6,12 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { Activity, UploadCloud, CheckCircle2, Circle } from "lucide-react";
 
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-
-const TAB_ITEMS = [
-  { key: "patient", label: "Patient" },
-  { key: "doctor", label: "Doctor" },
-];
 
 const passwordSchema = z
   .string()
@@ -38,7 +37,7 @@ const patientSchema = z.object({
   address: z.string().min(1, "This field is required"),
   knownAllergies: z.string().optional(),
   emergencyContactName: z.string().min(1, "This field is required"),
-  emergencyContactPhone: z.string().regex(/^\d{10}$/, "Enter a valid 10-digit phone number"),
+  emergencyContactPhone: z.string().regex(/^\d{10}$/, "Enter a valid phone number"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -81,9 +80,6 @@ const validateFile = (file) => {
   return true;
 };
 
-// Animation Variants
-
-
 const getPasswordStrength = (password) => {
   if (!password) return 0;
   let score = 0;
@@ -98,10 +94,8 @@ const getPasswordStrength = (password) => {
 const PasswordStrengthIndicator = ({ password }) => {
   const score = getPasswordStrength(password);
   const strengthLabels = ["Very Weak", "Very Weak", "Weak", "Fair", "Strong", "Very Strong"];
-  const strengthColors = ["slate", "red", "orange", "yellow", "blue", "green"];
-  
+  const strengthColors = ["bg-gray-200", "bg-red-500", "bg-orange-500", "bg-yellow-500", "bg-blue-500", "bg-green-500"];
   const currentLabel = password ? strengthLabels[score] : "";
-  const currentColor = strengthColors[score];
 
   const reqs = [
     { label: "At least 8 characters", valid: password?.length >= 8 },
@@ -114,31 +108,26 @@ const PasswordStrengthIndicator = ({ password }) => {
   if (!password) return null;
 
   return (
-    <div   className="mt-2 space-y-2">
-      <div className="flex justify-between items-center text-[12px] font-medium">
-        <span className="text-slate-500">Password strength:</span>
-        <span className={`text-${currentColor}-600`}>{currentLabel}</span>
+    <div className="mt-3 space-y-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+      <div className="flex justify-between items-center text-xs font-semibold">
+        <span className="text-gray-500 uppercase tracking-widest text-[10px]">Security level</span>
+        <span className="text-gray-900">{currentLabel}</span>
       </div>
-      <div className="flex gap-1">
+      <div className="flex gap-1.5 h-1.5">
         {[1, 2, 3, 4, 5].map((level) => (
           <div
             key={level}
-            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-              level <= score ? `bg-${currentColor}-500` : "bg-slate-200"
-            }`}
+            className={cn(
+              "flex-1 rounded-full transition-all duration-300",
+              level <= score ? strengthColors[score] : "bg-gray-200"
+            )}
           />
         ))}
       </div>
-      <ul className="text-[11px] space-y-1 mt-2 text-slate-500">
+      <ul className="text-xs space-y-2 mt-3 font-medium">
         {reqs.map((req, idx) => (
-          <li key={idx} className={`flex items-center gap-1.5 ${req.valid ? "text-green-600" : "text-slate-500"}`}>
-            <span className="flex-shrink-0 w-3 h-3 flex items-center justify-center">
-              {req.valid ? (
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-full h-full"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
-              ) : (
-                <div className="w-1.5 h-1.5 rounded-full bg-current opacity-40" />
-              )}
-            </span>
+          <li key={idx} className={cn("flex items-center gap-2", req.valid ? "text-green-700" : "text-gray-500")}>
+            {req.valid ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Circle className="w-4 h-4 text-gray-300" />}
             {req.label}
           </li>
         ))}
@@ -147,28 +136,10 @@ const PasswordStrengthIndicator = ({ password }) => {
   );
 };
 
-const InputField = ({ label, error, children }) => (
-  <div  className="flex flex-col gap-1.5">
-    <label className="text-[13px] font-semibold tracking-wide text-slate-700 uppercase">{label}</label>
-    <div className="group relative">
-      {children}
-      <div className="absolute inset-0 -z-10 rounded-md bg-gradient-to-br from-blue-500/0 to-indigo-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 blur" />
-    </div>
-    {error && (
-      <motion.span   className="text-[12px] font-medium text-red-500">
-        {error}
-      </motion.span>
-    )}
-  </div>
-);
-
-const inputClass = "h-11 w-full rounded-lg border border-slate-200/80 bg-white/50 px-4 text-[14px] shadow-sm transition-all duration-300 focus-visible:border-blue-500 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-blue-500/10 outline-none placeholder:text-slate-400";
-const textareaClass = "w-full rounded-lg border border-slate-200/80 bg-white/50 p-3 text-[14px] shadow-sm transition-all duration-300 focus-visible:border-blue-500 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-blue-500/10 outline-none placeholder:text-slate-400 resize-y min-h-[80px]";
-
 export default function RegisterPage() {
   const router = useRouter();
   const fileInputRef = useRef(null);
-  const [activeTab, setActiveTab] = useState("patient");
+  const [activeRole, setActiveRole] = useState("patient");
   const [hospitals, setHospitals] = useState([]);
   const [loadingHospitals, setLoadingHospitals] = useState(false);
   const [patientSubmitting, setPatientSubmitting] = useState(false);
@@ -305,279 +276,209 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-50 font-sans px-4 py-8">
-      {/* Static Background Elements (Optimized for performance) */}
-      <div className="pointer-events-none fixed -top-[20%] -right-[10%] h-[800px] w-[800px] rounded-full bg-gradient-to-br from-blue-300/40 to-indigo-400/20 blur-[100px]" />
-      <div className="pointer-events-none fixed -bottom-[20%] -left-[10%] h-[700px] w-[700px] rounded-full bg-gradient-to-tr from-cyan-300/30 to-blue-500/10 blur-[100px]" />
-      <div className="pointer-events-none fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
-
-      <div 
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 font-sans p-4 py-12">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-8 relative z-10 border border-gray-100">
         
-        
-        
-        className="relative z-10 w-full max-w-[640px] rounded-[24px] border border-white/40 bg-white/70 backdrop-blur-xl p-6 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-900/5 transition-all duration-300 hover:shadow-[0_8px_40px_rgb(37,99,235,0.08)]"
-      >
-        <div  className="mb-8 text-center">
-          <div 
-            
-            
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-xl shadow-blue-500/30 mb-4"
-          >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="text-white drop-shadow-md">
-              <path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7V3z" fill="currentColor" />
-            </svg>
+        <div className="mb-8 text-center flex flex-col items-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 shadow-sm mb-4">
+            <Activity className="text-white w-6 h-6" />
           </div>
-          <h1 className="text-[26px] font-bold tracking-tight text-slate-900 drop-shadow-sm">Create an Account</h1>
-          <p className="mt-2 text-[15px] font-medium text-slate-500">Join MediTrack to manage your healthcare journey</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Create an Account</h1>
+          <p className="mt-1.5 text-sm text-gray-500 font-medium">Join MediTrack to manage your healthcare journey</p>
         </div>
 
-        <div  className="mb-8 flex overflow-x-auto border-b-2 border-slate-200/80">
-          
-            {TAB_ITEMS.map((tab) => {
-              const active = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`relative flex-1 whitespace-nowrap px-4 py-3 text-[14px] outline-none transition-colors ${active ? "font-semibold text-blue-600" : "font-medium text-slate-500 hover:text-slate-700"}`}
-                >
-                  {tab.label}
-                  {active && (
-                    <div
-                      
-                      className="absolute bottom-[-2px] left-0 right-0 h-[2px] bg-blue-600"
-                      
-                    />
-                  )}
-                </button>
-              );
-            })}
-          
+        {/* Role Selector styled as Radio Cards */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <button
+            type="button"
+            className={cn(
+              "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200",
+              activeRole === "patient" 
+                ? "border-blue-600 bg-blue-50/50 text-blue-700" 
+                : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+            )}
+            onClick={() => setActiveRole("patient")}
+          >
+            <span className="font-semibold text-sm">Patient</span>
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200",
+              activeRole === "doctor" 
+                ? "border-blue-600 bg-blue-50/50 text-blue-700" 
+                : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+            )}
+            onClick={() => setActiveRole("doctor")}
+          >
+            <span className="font-semibold text-sm">Doctor</span>
+          </button>
         </div>
 
         <div>
-          {activeTab === "patient" && (
-            <form onSubmit={patientForm.handleSubmit(onSubmitPatient)} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <InputField label="Full name" error={patientForm.formState.errors.fullName?.message}>
-                  <input className={inputClass} {...patientForm.register("fullName")} />
-                </InputField>
-                <InputField label="Email address" error={patientForm.formState.errors.email?.message}>
-                  <input type="email" className={inputClass} {...patientForm.register("email")} />
-                </InputField>
-                <div className="flex flex-col">
-                  <InputField label="Password" error={patientForm.formState.errors.password?.message}>
-                    <input type="password" className={inputClass} {...patientForm.register("password")} />
-                  </InputField>
-                  <PasswordStrengthIndicator password={patientPassword} />
-                </div>
-                <InputField label="Confirm password" error={patientForm.formState.errors.confirmPassword?.message}>
-                  <input type="password" className={inputClass} {...patientForm.register("confirmPassword")} />
-                </InputField>
-                <InputField label="Phone number" error={patientForm.formState.errors.phone?.message}>
-                  <input type="tel" className={inputClass} {...patientForm.register("phone")} />
-                </InputField>
-                <InputField label="Date of birth" error={patientForm.formState.errors.dateOfBirth?.message}>
-                  <input type="date" className={inputClass} {...patientForm.register("dateOfBirth")} />
-                </InputField>
-                <InputField label="Gender" error={patientForm.formState.errors.gender?.message}>
-                  <select className={inputClass} {...patientForm.register("gender")}>
+          {activeRole === "patient" && (
+            <form onSubmit={patientForm.handleSubmit(onSubmitPatient)} className="space-y-5 flex flex-col">
+              <Input label="Full name" placeholder="E.g. John Doe" error={patientForm.formState.errors.fullName?.message} {...patientForm.register("fullName")} />
+              <Input label="Email address" type="email" placeholder="you@example.com" error={patientForm.formState.errors.email?.message} {...patientForm.register("email")} />
+              
+              <div>
+                <Input label="Password" type="password" placeholder="••••••••" error={patientForm.formState.errors.password?.message} {...patientForm.register("password")} />
+                <PasswordStrengthIndicator password={patientPassword} />
+              </div>
+              
+              <Input label="Confirm password" type="password" placeholder="••••••••" error={patientForm.formState.errors.confirmPassword?.message} {...patientForm.register("confirmPassword")} />
+              <Input label="Phone number" type="tel" placeholder="10-digit number" error={patientForm.formState.errors.phone?.message} {...patientForm.register("phone")} />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Date of birth" type="date" error={patientForm.formState.errors.dateOfBirth?.message} {...patientForm.register("dateOfBirth")} />
+                <div className="flex flex-col gap-1.5 w-full">
+                  <label className="text-sm font-medium text-gray-700">Gender</label>
+                  <select className={cn("flex h-10 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500")} {...patientForm.register("gender")}>
                     <option value="">Select</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
                   </select>
-                </InputField>
-                <InputField label="Blood group" error={patientForm.formState.errors.bloodGroup?.message}>
-                  <select className={inputClass} {...patientForm.register("bloodGroup")}>
-                    <option value="">Select</option>
-                    {BLOOD_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                </InputField>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-sm font-medium text-gray-700">Blood Group</label>
+                <select className={cn("flex h-10 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500")} {...patientForm.register("bloodGroup")}>
+                  <option value="">Select</option>
+                  {BLOOD_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
               </div>
 
-              <InputField label="Address" error={patientForm.formState.errors.address?.message}>
-                <textarea className={textareaClass} {...patientForm.register("address")} />
-              </InputField>
-              <InputField label="Known allergies (optional)" error={patientForm.formState.errors.knownAllergies?.message}>
-                <textarea className={textareaClass} {...patientForm.register("knownAllergies")} />
-              </InputField>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <InputField label="Emergency contact name" error={patientForm.formState.errors.emergencyContactName?.message}>
-                  <input className={inputClass} {...patientForm.register("emergencyContactName")} />
-                </InputField>
-                <InputField label="Emergency phone" error={patientForm.formState.errors.emergencyContactPhone?.message}>
-                  <input type="tel" className={inputClass} {...patientForm.register("emergencyContactPhone")} />
-                </InputField>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-sm font-medium text-gray-700">Address</label>
+                <textarea className={cn("flex min-h-[80px] w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500")} {...patientForm.register("address")} />
               </div>
 
-              <div  className="pt-4">
-                <button
-                  
-                  type="submit"
-                  disabled={patientSubmitting}
-                  className="relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-blue-500/30 transition-all hover:to-indigo-500 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity hover:opacity-100" />
-                  {patientSubmitting ? "Creating..." : "Create Account"}
-                </button>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-sm font-medium text-gray-700">Known allergies (optional)</label>
+                <textarea className={cn("flex min-h-[80px] w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500")} {...patientForm.register("knownAllergies")} />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Emergency contact name" error={patientForm.formState.errors.emergencyContactName?.message} {...patientForm.register("emergencyContactName")} />
+                <Input label="Emergency phone" type="tel" error={patientForm.formState.errors.emergencyContactPhone?.message} {...patientForm.register("emergencyContactPhone")} />
+              </div>
+
+              <Button type="submit" className="w-full h-11 text-base mt-2" loading={patientSubmitting}>
+                Create Account
+              </Button>
             </form>
           )}
 
-          {activeTab === "doctor" && (
+          {activeRole === "doctor" && (
             <div>
-              
-                {doctorSuccess ? (
-                  <div 
-                     
-                     
-                    
-                    className="flex flex-col items-center py-10 text-center"
-                  >
-                    <div 
-                       
-                      animate={{ scale: 1, transition: { type: "spring", stiffness: 200, damping: 20, delay: 0.1 } }}
-                      className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-green-600"
-                    >
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M9.00029 16.2L5.70029 13L4.60029 14.1L9.00029 18.5L20.0003 7.50003L18.9003 6.40003L9.00029 16.2Z" fill="currentColor" />
-                      </svg>
-                    </div>
-                    <h2 className="mb-2 text-[20px] font-semibold text-slate-900">Application Submitted</h2>
-                    <p className="mb-6 max-w-[380px] text-[14px] text-slate-500">
-                      Your hospital admin will review your medical certificate and approve your account. You will be able to log in once approved.
-                    </p>
-                    <button
-                      
-                      
-                      onClick={() => router.push("/login")}
-                      className="rounded-xl bg-blue-600 px-6 py-2.5 text-[14px] font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:bg-blue-700"
-                    >
-                      Back to Login
-                    </button>
+              {doctorSuccess ? (
+                <div className="flex flex-col items-center py-10 text-center animate-fadeIn">
+                  <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-green-600">
+                    <CheckCircle2 className="w-10 h-10" />
                   </div>
-                ) : (
-                  <form 
-                       
-                    onSubmit={doctorForm.handleSubmit(onSubmitDoctor)} className="space-y-4"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <InputField label="Full name" error={doctorForm.formState.errors.fullName?.message}>
-                        <input className={inputClass} {...doctorForm.register("fullName")} />
-                      </InputField>
-                      <InputField label="Email address" error={doctorForm.formState.errors.email?.message}>
-                        <input type="email" className={inputClass} {...doctorForm.register("email")} />
-                      </InputField>
-                      <div className="flex flex-col">
-                        <InputField label="Password" error={doctorForm.formState.errors.password?.message}>
-                          <input type="password" className={inputClass} {...doctorForm.register("password")} />
-                        </InputField>
-                        <PasswordStrengthIndicator password={doctorPassword} />
+                  <h2 className="mb-2 text-xl font-bold text-gray-900">Application Submitted</h2>
+                  <p className="mb-6 max-w-sm text-sm text-gray-500">
+                    Your hospital admin will review your medical certificate and approve your account. You will be able to log in once approved.
+                  </p>
+                  <Button onClick={() => router.push("/login")} className="px-8">
+                    Back to Login
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={doctorForm.handleSubmit(onSubmitDoctor)} className="space-y-5 flex flex-col">
+                  <Input label="Full name" placeholder="Dr. John Doe" error={doctorForm.formState.errors.fullName?.message} {...doctorForm.register("fullName")} />
+                  <Input label="Email address" type="email" placeholder="you@hospital.com" error={doctorForm.formState.errors.email?.message} {...doctorForm.register("email")} />
+                  
+                  <div>
+                    <Input label="Password" type="password" placeholder="••••••••" error={doctorForm.formState.errors.password?.message} {...doctorForm.register("password")} />
+                    <PasswordStrengthIndicator password={doctorPassword} />
+                  </div>
+                  
+                  <Input label="Confirm password" type="password" placeholder="••••••••" error={doctorForm.formState.errors.confirmPassword?.message} {...doctorForm.register("confirmPassword")} />
+                  <Input label="Phone number" type="tel" placeholder="10-digit number" error={doctorForm.formState.errors.phone?.message} {...doctorForm.register("phone")} />
+                  
+                  <Input label="Specialization" placeholder="E.g. Cardiology" error={doctorForm.formState.errors.specialization?.message} {...doctorForm.register("specialization")} />
+                  
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <label className="text-sm font-medium text-gray-700">Qualification</label>
+                    <select className={cn("flex h-10 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500")} {...doctorForm.register("qualification")}>
+                      <option value="">Select</option>
+                      {QUALIFICATIONS.map((q) => <option key={q} value={q}>{q}</option>)}
+                    </select>
+                  </div>
+                  
+                  <Input label="Department" error={doctorForm.formState.errors.department?.message} {...doctorForm.register("department")} />
+                  
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <label className="text-sm font-medium text-gray-700">Hospital</label>
+                    <select className={cn("flex h-10 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500")} {...doctorForm.register("hospitalId")}>
+                      <option value="">{loadingHospitals ? "Loading..." : "Select your hospital"}</option>
+                      {hospitals.map((hospital) => <option key={hospital.id} value={hospital.id}>{hospital.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input label="Years of experience" type="number" min="0" error={doctorForm.formState.errors.yearsOfExperience?.message} {...doctorForm.register("yearsOfExperience")} />
+                    <Input label="Reg Number" placeholder="12345" error={doctorForm.formState.errors.medicalRegNumber?.message} {...doctorForm.register("medicalRegNumber")} />
+                  </div>
+
+                  <Input label="Medical Council name" error={doctorForm.formState.errors.medicalCouncil?.message} {...doctorForm.register("medicalCouncil")} />
+
+                  <div className="pt-2">
+                    <label className="mb-2 block text-sm font-medium text-gray-700">Medical Certificate</label>
+                    <div
+                      onDragEnter={handleDragEnter} onDragOver={handleDragEnter} onDragLeave={handleDragLeave} onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={cn(
+                        "relative cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-200",
+                        dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50 hover:bg-gray-100"
+                      )}
+                    >
+                      <input ref={fileInputRef} type="file" className="hidden" accept="application/pdf,image/*" onChange={handleFileChange} />
+                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm border border-gray-200">
+                         <UploadCloud className="w-6 h-6 text-gray-500" />
                       </div>
-                      <InputField label="Confirm password" error={doctorForm.formState.errors.confirmPassword?.message}>
-                        <input type="password" className={inputClass} {...doctorForm.register("confirmPassword")} />
-                      </InputField>
-                      <InputField label="Phone number" error={doctorForm.formState.errors.phone?.message}>
-                        <input type="tel" className={inputClass} {...doctorForm.register("phone")} />
-                      </InputField>
-                      <InputField label="Specialization" error={doctorForm.formState.errors.specialization?.message}>
-                        <input className={inputClass} {...doctorForm.register("specialization")} />
-                      </InputField>
-                      <InputField label="Qualification" error={doctorForm.formState.errors.qualification?.message}>
-                        <select className={inputClass} {...doctorForm.register("qualification")}>
-                          <option value="">Select</option>
-                          {QUALIFICATIONS.map((q) => <option key={q} value={q}>{q}</option>)}
-                        </select>
-                      </InputField>
-                      <InputField label="Department" error={doctorForm.formState.errors.department?.message}>
-                        <input className={inputClass} {...doctorForm.register("department")} />
-                      </InputField>
-                    </div>
+                      <p className="text-sm font-medium text-gray-700">Drag and drop your certificate here</p>
+                      <p className="mt-1 text-xs text-gray-500">PDF or image • Max 10MB</p>
+                      <Button variant="secondary" className="mt-4 pointer-events-none" size="sm">Browse file</Button>
 
-                    <InputField label="Hospital" error={doctorForm.formState.errors.hospitalId?.message}>
-                      <select className={inputClass} {...doctorForm.register("hospitalId")}>
-                        <option value="">{loadingHospitals ? "Loading..." : "Select your hospital"}</option>
-                        {hospitals.map((hospital) => <option key={hospital.id} value={hospital.id}>{hospital.name}</option>)}
-                      </select>
-                    </InputField>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <InputField label="Years of experience" error={doctorForm.formState.errors.yearsOfExperience?.message}>
-                        <input type="number" min="0" className={inputClass} {...doctorForm.register("yearsOfExperience")} />
-                      </InputField>
-                      <InputField label="Medical Registration Number" error={doctorForm.formState.errors.medicalRegNumber?.message}>
-                        <input className={inputClass} {...doctorForm.register("medicalRegNumber")} />
-                      </InputField>
-                    </div>
-
-                    <InputField label="Medical Council name" error={doctorForm.formState.errors.medicalCouncil?.message}>
-                      <input className={inputClass} {...doctorForm.register("medicalCouncil")} />
-                    </InputField>
-
-                    <div  className="pt-2">
-                      <label className="mb-1.5 block text-[13px] font-semibold tracking-wide text-slate-700 uppercase">Medical Certificate</label>
-                      <div
-                        
-                        onDragEnter={handleDragEnter} onDragOver={handleDragEnter} onDragLeave={handleDragLeave} onDrop={handleDrop}
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`relative cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all duration-300 ${dragActive ? "border-blue-500 bg-blue-50/50" : "border-slate-300 bg-slate-50/50 hover:bg-slate-100/50"}`}
-                      >
-                        <input ref={fileInputRef} type="file" className="hidden" accept="application/pdf,image/*" onChange={handleFileChange} />
-                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-900/5">
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="text-slate-500">
-                            <path d="M4 4H14L18 8V20C18 21.1 17.1 22 16 22H4C2.9 22 2 21.1 2 20V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" strokeWidth="1.5" />
-                            <path d="M12 10V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                            <path d="M9 13L12 10L15 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
-                        <p className="text-[14px] font-medium text-slate-700">Drag and drop your certificate here</p>
-                        <p className="mt-1 text-[12px] text-slate-500">PDF or image • Max 10MB</p>
-                        <p className="mt-2 text-[14px] font-semibold text-blue-600">Browse file</p>
-
-                        {selectedFile && (
-                          <div 
-                             
-                            className="absolute inset-4 flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm"
-                            onClick={(e) => e.stopPropagation()}
+                      {selectedFile && (
+                        <div 
+                          className="absolute inset-x-4 bottom-4 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm z-10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="truncate text-sm font-medium text-gray-700 block text-left max-w-[200px]">
+                            {selectedFile.name} <span className="text-gray-400 font-normal">({getFileSizeString(selectedFile.size)})</span>
+                          </span>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            type="button"
+                            onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
                           >
-                            <span className="truncate text-[13px] font-medium text-slate-700">{selectedFile.name} ({getFileSizeString(selectedFile.size)})</span>
-                            <button
-                              type="button"
-                              onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                              className="ml-4 rounded-md bg-red-50 px-2.5 py-1.5 text-[12px] font-semibold text-red-600 transition-colors hover:bg-red-100"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                            Remove
+                          </Button>
+                        </div>
+                      )}
                     </div>
+                  </div>
 
-                    <div  className="pt-4">
-                      <button
-                        
-                        type="submit"
-                        disabled={doctorSubmitting}
-                        className="relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-blue-500/30 transition-all hover:to-indigo-500 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-                      >
-                        <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity hover:opacity-100" />
-                        {doctorSubmitting ? "Submitting..." : "Submit Application"}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              
+                  <Button type="submit" className="w-full h-11 text-base mt-4" loading={doctorSubmitting}>
+                    Submit Application
+                  </Button>
+                </form>
+              )}
             </div>
           )}
         </div>
 
-        <div  className="mt-8 text-center text-[14px] font-medium text-slate-500">
+        <div className="mt-8 text-center text-sm font-medium text-gray-500">
           Already have an account?{" "}
           <button
             type="button"
-            className="font-semibold text-blue-600 transition-colors hover:text-blue-700 hover:underline underline-offset-4"
+            className="font-semibold text-blue-600 transition-colors hover:text-blue-700 underline-offset-4"
             onClick={() => router.push("/login")}
           >
             Sign in

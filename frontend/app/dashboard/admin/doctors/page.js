@@ -4,83 +4,51 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import api from "@/lib/api";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
-import SearchBar from "@/components/shared/SearchBar";
-import Pagination from "@/components/shared/Pagination";
-
-const specializationColor = (specialization) => {
-  if (!specialization) return "bg-slate-100 text-slate-700";
-  const s = specialization.toLowerCase();
-  if (s.includes("cardio")) return "bg-red-100 text-red-700";
-  if (s.includes("pedia")) return "bg-blue-100 text-blue-700";
-  if (s.includes("ortho")) return "bg-amber-100 text-amber-700";
-  return "bg-green-100 text-green-700";
-};
+import { Modal } from "@/components/ui/modal";
+import { Input } from "@/components/ui/input";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, XCircle, Search, UserCircle2 } from "lucide-react";
+import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function AdminDoctorsPage() {
   const [pending, setPending] = useState([]);
   const [approved, setApproved] = useState([]);
-  const [hospitals, setHospitals] = useState([]);
-  const [selectedHospital, setSelectedHospital] = useState("");
   const [loading, setLoading] = useState(true);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [selected, setSelected] = useState(null);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [activeTab, setActiveTab] = useState("pending");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-
-  const loadHospitals = useCallback(async () => {
-    try {
-      const res = await api.get("/hospitals/");
-      setHospitals(Array.isArray(res.data.data) ? res.data.data : res.data.data?.data || []);
-    } catch {
-      toast.error("Failed to load hospitals");
-    }
-  }, []);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const params = { page, limit: 10 };
-      if (selectedHospital) params.hospital_id = selectedHospital;
-      if (searchTerm) params.search = searchTerm;
-
-      if (activeTab === "pending") {
-        const p = await api.get("/users/doctors/pending/", { params });
-        setPending(p.data.data?.data || p.data.data || []);
-        setTotalPages(p.data.data?.totalPages || 1);
-      } else {
-        const a = await api.get("/users/doctors/approved/", { params });
-        setApproved(a.data.data?.data || a.data.data || []);
-        setTotalPages(a.data.data?.totalPages || 1);
-      }
+      const [pRes, aRes] = await Promise.all([
+        api.get("/users/doctors/pending/").catch(() => ({ data: { data: [] }})),
+        api.get("/users/doctors/approved/").catch(() => ({ data: { data: [] }})),
+      ]);
+      setPending(pRes.data.data?.data || pRes.data.data || []);
+      setApproved(aRes.data.data?.data || aRes.data.data || []);
     } catch {
       toast.error("Failed to load doctors");
     } finally {
       setLoading(false);
     }
-  }, [selectedHospital, activeTab, page, searchTerm]);
+  }, []);
 
   useEffect(() => {
-    loadHospitals();
     load();
-  }, [loadHospitals, load]);
-
+  }, [load]);
 
   const approve = async (doc) => {
-    if (!confirm(`Approve ${doc.user?.email || "this doctor"}?`)) return;
+    if (!window.confirm(`Approve ${doc.user?.email || "this doctor"}?`)) return;
     try {
-      await api.post(`/users/doctors/${doc.id}/approve/`, { hospital_id: selectedHospital || undefined });
+      await api.post(`/users/doctors/${doc.id}/approve/`);
       toast.success("Doctor approved");
       load();
     } catch {
@@ -89,15 +57,9 @@ export default function AdminDoctorsPage() {
   };
 
   const reject = async () => {
-    if (!selected) {
-      toast.error("No doctor selected");
-      return;
-    }
+    if (!selected) return;
     try {
-      await api.post(`/users/doctors/${selected.id}/reject/`, {
-        reason: rejectReason,
-        hospital_id: selectedHospital || undefined,
-      });
+      await api.post(`/users/doctors/${selected.id}/reject/`, { reason: rejectReason });
       toast.success("Doctor rejected");
       setRejectOpen(false);
       setRejectReason("");
@@ -107,177 +69,146 @@ export default function AdminDoctorsPage() {
     }
   };
 
-  const activeItems = useMemo(() => {
-    return activeTab === "pending" ? pending : approved;
-  }, [activeTab, pending, approved]);
-
-  const filteredItems = activeItems;
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[24px] font-semibold text-slate-900">Doctor Approvals</h1>
-        <select
-          className="rounded-lg border border-border px-3 py-2"
-          value={selectedHospital}
-          onChange={(e) => { setSelectedHospital(e.target.value); setPage(1); }}
+    <div className="space-y-6 max-w-7xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Doctor Approvals</h1>
+        <p className="text-sm text-gray-500 mt-1">Review and manage doctor applications</p>
+      </div>
+
+      <div className="flex border-b border-gray-200">
+        <button
+          className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${activeTab === "pending" ? "text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+          onClick={() => setActiveTab("pending")}
         >
-          <option value="">All Hospitals</option>
-          {hospitals.map((h) => (
-            <option key={h.id} value={h.id}>{h.name}</option>
-          ))}
-        </select>
+          Pending Applications
+          {pending.length > 0 && <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs">{pending.length}</span>}
+          {activeTab === "pending" && <div className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-blue-600" />}
+        </button>
+        <button
+          className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${activeTab === "approved" ? "text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+          onClick={() => setActiveTab("approved")}
+        >
+          Approved Doctors
+          {activeTab === "approved" && <div className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-blue-600" />}
+        </button>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <Tabs value={activeTab} onValueChange={(t) => { setActiveTab(t); setPage(1); }}>
-          <TabsList className="rounded-full border border-border bg-slate-100 p-1">
-            <TabsTrigger value="pending" className="rounded-full px-4 py-2">Pending</TabsTrigger>
-            <TabsTrigger value="approved" className="rounded-full px-4 py-2">Approved</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <SearchBar 
-            placeholder="Search by name, email, or specialization" 
-            defaultValue={searchTerm} 
-            onSearch={(q) => { setSearchTerm(q); setPage(1); }} 
-          />
+      {loading ? (
+        activeTab === "pending" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonCard /><SkeletonCard /><SkeletonCard />
+          </div>
+        ) : (
+          <SkeletonTable />
+        )
+      ) : activeTab === "pending" ? (
+        <div>
+          {pending.length === 0 ? (
+             <EmptyState icon={CheckCircle2} title="All caught up!" description="There are no pending doctor applications." />
+          ) : (
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {pending.map((doc) => {
+                 const name = doc.first_name || doc.last_name ? `${doc.first_name || ''} ${doc.last_name || ''}`.trim() : doc.email?.split('@')[0] || doc.username || "Doctor";
+                 return (
+                   <Card key={doc.id} className="p-5 flex flex-col gap-4">
+                     <div className="flex gap-4">
+                       <Avatar name={name} size="md" className="shrink-0" />
+                       <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-gray-900 text-sm truncate">{name}</h3>
+                          <p className="text-xs text-gray-500 truncate">{doc.email}</p>
+                          <div className="mt-2 text-xs text-gray-500 bg-gray-50 rounded-md p-2">
+                             <div><span className="font-semibold text-gray-700">Spec:</span> {doc.specialization || "General"}</div>
+                             <div className="mt-1"><span className="font-semibold text-gray-700">Reg #:</span> {doc.medical_reg_number || "—"}</div>
+                          </div>
+                       </div>
+                     </div>
+                     <div className="grid grid-cols-2 gap-2 mt-auto pt-4 border-t border-gray-100">
+                        <Button variant="danger" className="text-xs py-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border-none px-0" onClick={() => { setSelected(doc); setRejectOpen(true); }}>
+                          <XCircle className="w-4 h-4 mr-1.5" /> Reject
+                        </Button>
+                        <Button variant="success" className="text-xs py-1.5 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-none px-0" onClick={() => approve(doc)}>
+                          <CheckCircle2 className="w-4 h-4 mr-1.5" /> Approve
+                        </Button>
+                     </div>
+                   </Card>
+                 );
+               })}
+             </div>
+          )}
         </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <Card className="rounded-lg border-border bg-white shadow-card" style={{minWidth: '640px'}}>
-          {loading ? (
-            <div className="grid gap-2 p-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-1/5">Doctor</TableHead>
-                  <TableHead className="w-1/5">Specialization</TableHead>
-                  <TableHead className="w-1/6">REG #</TableHead>
-                  <TableHead className="w-1/5">Hospital</TableHead>
-                  <TableHead className="w-1/5 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredItems.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-slate-500">
-                      {activeTab === "pending" ? "No pending doctors found." : "No approved doctors found."}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredItems.map((doctor) => (
-                    <TableRow key={doctor.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center font-medium text-slate-700">
-                            {doctor.user?.username?.slice(0, 2).toUpperCase() || doctor.user?.email?.slice(0, 2).toUpperCase() || "D"}
+      ) : (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            {approved.length === 0 ? (
+               <div className="p-8"><EmptyState icon={UserCircle2} title="No approved doctors" /></div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Doctor</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Specialization</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg Number</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Hospital</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {approved.map((doc) => {
+                    const name = doc.first_name || doc.last_name ? `${doc.first_name || ''} ${doc.last_name || ''}`.trim() : doc.email?.split('@')[0] || doc.username || "Doctor";
+                    return (
+                      <tr key={doc.id} className="hover:bg-gray-50/80 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <Avatar size="sm" name={name} />
+                            <div>
+                               <div className="text-sm font-semibold text-gray-900">{name}</div>
+                               <div className="text-xs text-gray-500">{doc.email}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-medium text-slate-900">{doctor.user?.username || doctor.user?.email || "Doctor"}</div>
-                            <div className="text-xs text-slate-500">{doctor.user?.email}</div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${specializationColor(doctor.specialization)}`}>
-                          {doctor.specialization || "General"}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700">
-                          {doctor.medical_reg_number || "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell>{doctor.hospital_name || "—"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                              setSelectedDoctor(doctor);
-                              setDetailsOpen(true);
-                            }}
-                          >
-                            View Profile
-                          </Button>
-                          {activeTab === "pending" && (
-                            <>
-                              <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => approve(doctor)}>
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="bg-red-600 hover:bg-red-700"
-                                onClick={() => {
-                                  setSelected(doctor);
-                                  setRejectOpen(true);
-                                }}
-                              >
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-          <Pagination current={page} totalPages={totalPages} onPageChange={setPage} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant="blue">{doc.specialization || "General"}</Badge>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-mono text-gray-600">
+                          {doc.medical_reg_number || "—"}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-600">
+                          {doc.hospital_name || "System"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </Card>
-      </div>
+      )}
 
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <DialogContent className="rounded-lg">
-          <DialogHeader>
-            <DialogTitle className="text-[16px] font-medium">Reject Doctor</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-2">
-            <label className="text-[13px] font-medium">Reason</label>
-            <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+      <Modal 
+        isOpen={rejectOpen} 
+        onClose={() => setRejectOpen(false)} 
+        title="Reject Doctor Application"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRejectOpen(false)}>Cancel</Button>
+            <Button variant="danger" onClick={reject}>Reject Application</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">Please provide a reason for rejecting this application. This helps the doctor understand why they were not approved.</p>
+          <div className="flex flex-col gap-1.5">
+             <label className="text-sm font-semibold text-gray-700">Reason</label>
+             <textarea 
+               className="w-full rounded-xl border border-gray-300 bg-white p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+               value={rejectReason}
+               onChange={(e) => setRejectReason(e.target.value)}
+               placeholder="E.g. Incomplete verification documents"
+             />
           </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setRejectOpen(false)}>
-              Cancel
-            </Button>
-            <Button className="bg-red-600 hover:bg-red-700" onClick={reject}>
-              Reject
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="max-w-lg rounded-lg">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">Doctor Details</DialogTitle>
-          </DialogHeader>
-          {selectedDoctor ? (
-            <div className="space-y-3">
-              <div className="text-sm text-slate-700">Email: {selectedDoctor.user?.email}</div>
-              <div className="text-sm text-slate-700">Specialization: {selectedDoctor.specialization || "—"}</div>
-              <div className="text-sm text-slate-700">Reg #: {selectedDoctor.medical_reg_number || "—"}</div>
-              <div className="text-sm text-slate-700">Hospital: {selectedDoctor.hospital_name || "—"}</div>
-              <div className="text-sm text-slate-700">Status: {activeTab === "pending" ? "Pending" : "Approved"}</div>
-              <div className="flex justify-end">
-                <Button onClick={() => setDetailsOpen(false)}>Close</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-slate-500">No doctor selected</div>
-          )}
-        </DialogContent>
-      </Dialog>
+        </div>
+      </Modal>
     </div>
   );
 }

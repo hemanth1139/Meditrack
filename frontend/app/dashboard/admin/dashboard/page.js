@@ -1,22 +1,12 @@
 import Link from "next/link";
 import { serverFetch } from "@/lib/server-fetch";
 import AdminApprovalTable from "@/components/interactable/AdminApprovalTable";
-
-const StatCard = ({ icon, label, value }) => (
-  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-    <div className="flex items-center gap-3 mb-3">
-      <span className="text-2xl">{icon}</span>
-      <span className="text-sm text-gray-500">{label}</span>
-    </div>
-    <p className="text-3xl font-bold text-gray-800">{value ?? "—"}</p>
-  </div>
-);
-
-const EmptyState = ({ message }) => (
-  <div className="text-center py-10 text-gray-400">
-    <p className="text-sm">{message}</p>
-  </div>
-);
+import { StatCard } from "@/components/ui/stat-card";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Building2, Users, Clock, Building } from "lucide-react";
+import { getGreeting, formatDate } from "@/lib/utils";
 
 export default async function AdminDashboardPage() {
   let data;
@@ -31,68 +21,71 @@ export default async function AdminDashboardPage() {
 
   if (error) {
     return (
-      <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm">
+      <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm font-medium">
         Failed to load dashboard. Please refresh.
       </div>
     );
   }
 
+  const today = new Date().toISOString();
+
   return (
-    <div className="space-y-6">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>
-        <p className="text-slate-500">Overview of system health</p>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Top Section */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, Site Admin 👋</h1>
+        <p className="text-sm text-gray-400 font-medium mt-1.5">{formatDate(today)}</p>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon="🏥" label="Total Hospitals" value={data?.total_hospitals} />
-        <StatCard icon="👥" label="Total Users" value={data?.total_users} />
-        <StatCard icon="⏳" label="Pending Doctor Approvals" value={data?.pending_approvals} />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <StatCard icon={Building2} label="Total Hospitals" value={data?.total_hospitals} color="blue" />
+        <StatCard icon={Users} label="Total Users" value={data?.total_users} color="green" />
+        <StatCard icon={Clock} label="Pending Doctor Approvals" value={data?.pending_approvals} color="amber" />
       </div>
 
-      {/* Section 1: Recent Hospitals */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800 text-base">Recent Hospitals</h2>
-          <Link href="/dashboard/admin/hospitals" className="text-sm text-blue-500 hover:underline font-medium">
-            View All →
+      {/* Recent Hospitals */}
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+          <h2 className="text-base font-semibold text-gray-800">Recent Hospitals</h2>
+          <Link href="/dashboard/admin/hospitals" className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">
+            View All
           </Link>
         </div>
         <div className="overflow-x-auto">
           {!data?.recent_hospitals?.length ? (
-            <EmptyState message="No hospitals registered yet" />
+            <EmptyState icon={Building} title="No hospitals registered" description="When new hospitals are added, they will appear here." />
           ) : (
-            <table className="min-w-full text-sm">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 text-left text-gray-500 text-xs uppercase tracking-wide">
-                  <th className="px-5 py-3 font-medium">Hospital Name</th>
-                  <th className="px-5 py-3 font-medium">City</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium">Date Added</th>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Hospital Name</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">City</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Date Added</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {data.recent_hospitals.map((h) => (
-                  <tr key={h.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 font-medium text-gray-800">{h.name}</td>
-                    <td className="px-5 py-3 text-gray-600">{h.city}</td>
-                    <td className="px-5 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${h.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                        {h.active ? "Active" : "Inactive"}
-                      </span>
+                  <tr key={h.id} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">{h.name}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-600">{h.city}</td>
+                    <td className="px-6 py-4">
+                      <Badge variant={h.active ? "green" : "red"}>{h.active ? "Active" : "Inactive"}</Badge>
                     </td>
-                    <td className="px-5 py-3 text-gray-500">{h.created_at || "—"}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-500 text-right">{h.created_at || "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
-      </div>
+      </Card>
 
-      {/* Section 2: Pending Doctor Approvals */}
-      <AdminApprovalTable pendingDoctors={data?.pending_doctors} />
+      {/* Pending Doctor Approvals */}
+      <div className="mt-6">
+        <AdminApprovalTable pendingDoctors={data?.pending_doctors} />
+      </div>
     </div>
   );
 }

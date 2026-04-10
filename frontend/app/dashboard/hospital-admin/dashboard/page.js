@@ -1,22 +1,12 @@
 import Link from "next/link";
 import { serverFetch } from "@/lib/server-fetch";
 import HospitalApprovalTable from "@/components/interactable/HospitalApprovalTable";
-
-const StatCard = ({ icon, label, value }) => (
-  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-    <div className="flex items-center gap-3 mb-3">
-      <span className="text-2xl">{icon}</span>
-      <span className="text-sm text-gray-500">{label}</span>
-    </div>
-    <p className="text-3xl font-bold text-gray-800">{value ?? "—"}</p>
-  </div>
-);
-
-const EmptyState = ({ message }) => (
-  <div className="text-center py-10 text-gray-400">
-    <p className="text-sm">{message}</p>
-  </div>
-);
+import { StatCard } from "@/components/ui/stat-card";
+import { Card } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { getGreeting, formatDate } from "@/lib/utils";
+import { Users, UserPlus, Clock, Stethoscope } from "lucide-react";
 
 export default async function HospitalAdminDashboardPage() {
   let data;
@@ -34,68 +24,75 @@ export default async function HospitalAdminDashboardPage() {
 
   if (error) {
     return (
-      <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm">
+      <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm font-medium">
         Failed to load dashboard. Please refresh.
       </div>
     );
   }
 
+  const today = new Date().toISOString();
+
   return (
-    <div className="space-y-6">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-slate-800">Hospital Dashboard</h1>
-        <p className="text-slate-500">{data?.hospital_name}</p>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Top Section */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, Hospital Admin 👋</h1>
+        <div className="flex items-center gap-2 mt-1.5">
+          <p className="text-sm text-gray-400 font-medium">{formatDate(today)}</p>
+          <span className="text-gray-300">•</span>
+          <p className="text-sm text-blue-500 font-semibold">{data?.hospital_name}</p>
+        </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon="👨‍⚕️" label="Total Doctors" value={data?.total_doctors} />
-        <StatCard icon="👷" label="Total Staff" value={data?.total_staff} />
-        <StatCard icon="⏳" label="Pending Approvals" value={data?.pending_approvals} />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <StatCard icon={Stethoscope} label="Total Doctors" value={data?.total_doctors} color="blue" />
+        <StatCard icon={Users} label="Total Staff" value={data?.total_staff} color="green" />
+        <StatCard icon={Clock} label="Pending Approvals" value={data?.pending_approvals} color="amber" />
       </div>
 
-      <HospitalApprovalTable pendingDoctors={data?.pending_doctors} hospitalId={user?.hospital_id} />
+      <div className="mt-6">
+         <HospitalApprovalTable pendingDoctors={data?.pending_doctors} hospitalId={user?.hospital_id} />
+      </div>
 
-      {/* Section 2: Recently Joined Staff */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-6">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800 text-base">Recently Joined Staff</h2>
-          <Link href="/dashboard/hospital-admin/staff" className="text-sm text-blue-500 hover:underline font-medium">
-            View All →
+      {/* Recently Joined Staff */}
+      <Card className="overflow-hidden mt-6">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+          <h2 className="text-base font-semibold text-gray-800">Recently Joined Staff</h2>
+          <Link href="/dashboard/hospital-admin/staff" className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">
+            View All
           </Link>
         </div>
         <div className="overflow-x-auto">
           {!data?.recent_staff?.length ? (
-            <EmptyState message="No staff members yet — create staff accounts from the Staff page" />
+            <EmptyState icon={UserPlus} title="No staff members yet" description="Create staff accounts from the Staff page." />
           ) : (
-            <table className="min-w-full text-sm">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 text-left text-gray-500 text-xs uppercase tracking-wide">
-                  <th className="px-5 py-3 font-medium">Staff Name</th>
-                  <th className="px-5 py-3 font-medium">Email</th>
-                  <th className="px-5 py-3 font-medium">Date Joined</th>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Staff Details</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Email Address</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Date Joined</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {data.recent_staff.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3">
+                  <tr key={s.id} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">
-                          {(s.name || "S").charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-medium text-gray-800">{s.name}</span>
+                        <Avatar size="sm" name={s.name || "S"} />
+                        <span className="text-sm font-semibold text-gray-900">{s.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-gray-500">{s.email}</td>
-                    <td className="px-5 py-3 text-gray-500">{s.date_joined}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-600">{s.email}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-500 text-right">{s.date_joined}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

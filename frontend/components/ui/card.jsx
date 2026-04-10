@@ -1,112 +1,32 @@
-import * as React from "react"
+import React, { forwardRef } from "react";
+import { cn } from "@/lib/utils";
 
-import { cn } from "@/lib/utils"
+const cardVariants = {
+  default: "bg-white shadow-card border border-border",
+  hoverable: "bg-white shadow-card border border-border transition-all duration-200 hover:-translate-y-1 hover:shadow-hover cursor-pointer",
+  gradient: "bg-white shadow-card border border-border overflow-hidden",
+};
 
-function Card({
-  className,
-  ...props
-}) {
+export const Card = forwardRef(({ className, variant = "default", children, headerContent, ...props }, ref) => {
   return (
     <div
-      data-slot="card"
+      ref={ref}
       className={cn(
-        "rounded-xl border border-border bg-white text-card-foreground shadow-card",
+        "rounded-2xl",
+        cardVariants[variant],
         className
       )}
-      {...props} />
-  );
-}
-
-function CardHeader({
-  className,
-  ...props
-}) {
-  return (
-    <div
-      data-slot="card-header"
-      className={cn(
-        "grid auto-rows-min items-start gap-1 px-6 pt-6",
-        className
+      {...props}
+    >
+      {variant === "gradient" && (
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white">
+          {headerContent}
+        </div>
       )}
-      {...props} />
+      <div className={cn(variant !== "gradient" && "")}>
+        {children}
+      </div>
+    </div>
   );
-}
-
-function CardTitle({
-  className,
-  ...props
-}) {
-  return (
-    <div
-      data-slot="card-title"
-      className={cn(
-        "text-[16px] font-medium leading-snug",
-        className
-      )}
-      {...props} />
-  );
-}
-
-function CardDescription({
-  className,
-  ...props
-}) {
-  return (
-    <div
-      data-slot="card-description"
-      className={cn("text-[14px] text-slate-600", className)}
-      {...props} />
-  );
-}
-
-function CardAction({
-  className,
-  ...props
-}) {
-  return (
-    <div
-      data-slot="card-action"
-      className={cn(
-        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
-        className
-      )}
-      {...props} />
-  );
-}
-
-function CardContent({
-  className,
-  ...props
-}) {
-  return (
-    <div
-      data-slot="card-content"
-      className={cn("px-6 pb-6", className)}
-      {...props} />
-  );
-}
-
-function CardFooter({
-  className,
-  ...props
-}) {
-  return (
-    <div
-      data-slot="card-footer"
-      className={cn(
-        "flex items-center border-t border-border px-6 py-4",
-        className
-      )}
-      {...props} />
-  );
-}
-
-export {
-  Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardAction,
-  CardDescription,
-  CardContent,
-}
+});
+Card.displayName = "Card";

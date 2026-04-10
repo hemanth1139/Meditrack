@@ -80,7 +80,7 @@ export default function DashboardLayout({ children }) {
             breadcrumb="MediTrack"
             onToggleSidebar={() => setMobileSidebarOpen((v) => !v)}
           />
-          <main className="p-4 md:p-6">{children}</main>
+          <main className="p-4 md:p-6 max-w-7xl mx-auto w-full">{children}</main>
         </div>
       </div>
     </RoleGuard>
