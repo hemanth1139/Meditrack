@@ -325,6 +325,7 @@ class PatientDashboardStatsView(views.APIView):
                 "id": r.id,
                 "visit_type": r.visit_type,
                 "doctor_name": r.created_by.get_full_name() or r.created_by.username,
+                "doctor_specialization": getattr(r.created_by, 'specialization', ''),
                 "visit_date": r.created_at.strftime("%Y-%m-%d"),
                 "diagnosis": r.diagnosis if r.visit_type == MedicalRecord.VisitType.CONSULTATION else None,
             }

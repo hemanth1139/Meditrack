@@ -72,7 +72,7 @@ class RegisterSerializer(serializers.Serializer):
             "medical_council",
             "years_of_experience",
         ]
-        doctor_data = {k: validated_data.pop(k) for k in list(validated_data.keys()) if k in doctor_fields}
+        doctor_data = {k: validated_data.get(k) for k in list(validated_data.keys()) if k in doctor_fields}
 
         password = validated_data.pop("password")
         hospital = None
