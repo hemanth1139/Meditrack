@@ -1,5 +1,8 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { serverFetch } from "@/lib/server-fetch";
+import api from "@/lib/api";
 import DoctorDashboardActions from "@/components/interactable/DoctorDashboardActions";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card } from "@/components/ui/card";
@@ -13,32 +16,51 @@ const VISIT_TYPE_LABELS = {
   PROCEDURE_EMERGENCY: "Procedure / Emergency",
 };
 
-export default async function DoctorDashboardPage() {
-  let data;
-  let error;
-  let user;
+export default function DoctorDashboardPage() {
+  const [data, setData] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  try {
-    const [res, meRes] = await Promise.all([
-      serverFetch("/dashboard/doctor/stats/"),
-      serverFetch("/auth/me/")
-    ]);
-    data = res.data;
-    user = meRes.data;
-  } catch (err) {
-    error = err.message;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [res, meRes] = await Promise.all([
+          api.get("/dashboard/doctor/stats/"),
+          api.get("/auth/me/"),
+        ]);
+        setData(res.data?.data || res.data);
+        setUser(meRes.data?.data || meRes.data);
+      } catch (err) {
+        setError("Failed to load dashboard. Please refresh.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const today = new Date().toISOString();
+  const firstName = user?.last_name || user?.first_name || user?.username || "Doctor";
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500 font-medium">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
       <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm font-medium">
-        Failed to load dashboard. Please refresh.
+        {error}
       </div>
     );
   }
-
-  const firstName = user?.last_name || user?.first_name || user?.username || "Doctor";
-  const today = new Date().toISOString();
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -46,6 +68,12 @@ export default async function DoctorDashboardPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, Dr. {firstName} 👋</h1>
         <div className="flex items-center gap-2 mt-1.5">
+          {user?.specialization && (
+            <>
+              <p className="text-sm text-gray-500 font-semibold">{user.specialization}</p>
+              <span className="text-gray-300">•</span>
+            </>
+          )}
           <p className="text-sm text-gray-400 font-medium">{formatDate(today)}</p>
           <span className="text-gray-300">•</span>
           <p className="text-sm text-blue-500 font-semibold">{data?.hospital_name}</p>
@@ -76,9 +104,9 @@ export default async function DoctorDashboardPage() {
 
         {!data?.recent_patients?.length ? (
           <div className="text-center py-12 text-gray-400">
-             <Users className="w-12 h-12 mx-auto text-gray-200 mb-3" />
-             <p className="text-sm font-medium">No patients yet</p>
-             <p className="text-xs mt-1">Scan a QR to get started</p>
+            <Users className="w-12 h-12 mx-auto text-gray-200 mb-3" />
+            <p className="text-sm font-medium">No patients yet</p>
+            <p className="text-xs mt-1">Scan a QR to get started</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">

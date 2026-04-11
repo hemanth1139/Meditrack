@@ -1,5 +1,8 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { serverFetch } from "@/lib/server-fetch";
+import api from "@/lib/api";
 import AdminApprovalTable from "@/components/interactable/AdminApprovalTable";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card } from "@/components/ui/card";
@@ -8,26 +11,45 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Building2, Users, Clock, Building } from "lucide-react";
 import { getGreeting, formatDate } from "@/lib/utils";
 
-export default async function AdminDashboardPage() {
-  let data;
-  let error;
-  
-  try {
-    const res = await serverFetch("/dashboard/admin/stats/");
-    data = res.data;
-  } catch (err) {
-    error = err.message;
+export default function AdminDashboardPage() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await api.get("/dashboard/admin/stats/");
+        setData(res.data?.data || res.data);
+      } catch (err) {
+        setError("Failed to load dashboard. Please refresh.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const today = new Date().toISOString();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500 font-medium">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
       <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm font-medium">
-        Failed to load dashboard. Please refresh.
+        {error}
       </div>
     );
   }
-
-  const today = new Date().toISOString();
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">

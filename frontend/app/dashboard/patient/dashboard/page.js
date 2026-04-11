@@ -1,5 +1,8 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { serverFetch } from "@/lib/server-fetch";
+import api from "@/lib/api";
 import PatientQRActions from "@/components/interactable/PatientQRActions";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card } from "@/components/ui/card";
@@ -12,32 +15,51 @@ const VISIT_TYPE_META = {
   PROCEDURE_EMERGENCY: { icon: "🏥", label: "Procedure / Emergency" },
 };
 
-export default async function PatientDashboardPage() {
-  let data;
-  let user;
-  let error;
+export default function PatientDashboardPage() {
+  const [data, setData] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  try {
-    const [res, meRes] = await Promise.all([
-      serverFetch("/dashboard/patient/stats/"),
-      serverFetch("/auth/me/")
-    ]);
-    data = res.data;
-    user = meRes.data;
-  } catch (err) {
-    error = err.message;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [res, meRes] = await Promise.all([
+          api.get("/dashboard/patient/stats/"),
+          api.get("/auth/me/"),
+        ]);
+        setData(res.data?.data || res.data);
+        setUser(meRes.data?.data || meRes.data);
+      } catch (err) {
+        setError("Failed to load dashboard. Please refresh.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const today = new Date().toISOString();
+  const firstName = user?.first_name || user?.username || "Patient";
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500 font-medium">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
       <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm font-medium">
-        Failed to load dashboard. Please refresh.
+        {error}
       </div>
     );
   }
-
-  const firstName = user?.first_name || user?.username || "Patient";
-  const today = new Date().toISOString();
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -83,7 +105,9 @@ export default async function PatientDashboardPage() {
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold text-gray-900 text-sm">{meta.label}</div>
                         <div className="text-xs text-gray-500 mt-1">
-                          <span className="font-medium text-gray-700">Dr. {r.doctor_name}</span> • {r.visit_date}
+                          <span className="font-medium text-gray-700">Dr. {r.doctor_name}</span>
+                          {r.doctor_specialization && <span className="text-gray-400"> ({r.doctor_specialization})</span>}
+                          {" • "}{r.visit_date}
                         </div>
                         {r.diagnosis && (
                           <div className="mt-2 text-sm text-gray-600 bg-white border border-gray-100 rounded-lg p-2 truncate">
@@ -136,8 +160,8 @@ export default async function PatientDashboardPage() {
           {/* QR Code Section */}
           <Card variant="gradient" headerContent={
             <div>
-               <h2 className="text-lg font-bold">Your Identity Card</h2>
-               <p className="text-sm font-medium text-blue-100 mt-1">Show this QR to doctors & staff</p>
+              <h2 className="text-lg font-bold">Your Identity Card</h2>
+              <p className="text-sm font-medium text-blue-100 mt-1">Show this QR to doctors & staff</p>
             </div>
           }>
             <div className="p-6 flex flex-col items-center">
