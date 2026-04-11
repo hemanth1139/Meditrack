@@ -22,7 +22,7 @@ class AdminDashboardStatsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        if request.user.role != "ADMIN":
+        if request.user.role != "ADMIN" and not request.user.is_superuser:
             return api_response(False, None, "Permission denied")
 
         cache_key = f"dashboard_admin_{request.user.id}"

@@ -22,7 +22,14 @@ class Command(BaseCommand):
             user.save()
             self.stdout.write(self.style.SUCCESS(f"✅ Admin created: {admin_email}"))
         else:
-            self.stdout.write(self.style.WARNING(f"⚠️  Admin already exists: {admin_email}"))
+            # Fix existing admin if role was not set
+            user = User.objects.get(email=admin_email)
+            if not user.role:
+                user.role = User.Roles.ADMIN
+                user.save()
+                self.stdout.write(self.style.SUCCESS(f"✅ Admin role fixed: {admin_email}"))
+            else:
+                self.stdout.write(self.style.WARNING(f"⚠️  Admin already exists: {admin_email}"))
 
         # ── Hospitals ─────────────────────────────────────────────────
         hospitals = [
