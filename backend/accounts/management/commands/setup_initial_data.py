@@ -16,6 +16,7 @@ class Command(BaseCommand):
 
         if not User.objects.filter(email=admin_email).exists():
             user = User.objects.create_superuser(admin_username, admin_email, admin_password)
+            user.role = User.Roles.ADMIN
             user.first_name = "System"
             user.last_name = "Administrator"
             user.save()

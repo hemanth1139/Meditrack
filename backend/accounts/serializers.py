@@ -174,7 +174,7 @@ class LoginSerializer(TokenObtainPairSerializer):
                 raise AuthenticationFailed("No active account found with the given credentials.")
             data['id'] = self.user.id
             data['email'] = self.user.email
-            data['role'] = self.user.role
+            data['role'] = self.user.role or ("ADMIN" if self.user.is_superuser else "")
             data['first_name'] = self.user.first_name
             data['last_name'] = self.user.last_name
             data['hospital_id'] = getattr(self.user, 'hospital_id', None)
@@ -189,7 +189,7 @@ class LoginSerializer(TokenObtainPairSerializer):
             'access': str(refresh.access_token),
             'id': user.id,
             'email': user.email,
-            'role': user.role,
+            'role': user.role or ("ADMIN" if user.is_superuser else "USER"),
             'first_name': user.first_name,
             'last_name': user.last_name,
             'hospital_id': getattr(user, 'hospital_id', None),
