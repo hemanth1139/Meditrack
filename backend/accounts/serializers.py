@@ -151,7 +151,7 @@ from django.contrib.auth import authenticate
 class LoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         # Support login by either email or username
-        login_input = attrs.get(self.username_field, "")
+        login_input = attrs.get(self.username_field, "").strip()
         password = attrs.get("password", "")
 
         user = None
