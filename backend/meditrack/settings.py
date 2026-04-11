@@ -206,6 +206,8 @@ REST_FRAMEWORK = {
     },
 }
 
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
+
 FIELD_ENCRYPTION_KEY = config(
     "FIELD_ENCRYPTION_KEY",
     default="qxQKF1QWtZcSfawgBBGl5_ffgTrIbhpKy6tFeacax2k=",

@@ -102,7 +102,7 @@ export default function AddRecordModal({ isOpen, onClose, patientId }) {
     <Modal
       isOpen={isOpen}
       onClose={step === 2 ? () => setStep(1) : onClose}
-      maxWidth="max-w-[70rem]" // Larger width for 2-column layout
+      className={step === 2 ? "max-w-6xl w-full" : "max-w-4xl w-full"}
       title={
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">

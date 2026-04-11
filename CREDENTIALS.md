@@ -1,87 +1,65 @@
-# MediTrack — Demo Credentials
+# MediTrack � Credentials
 
-> **Universal Password for ALL accounts:** `MediTrack@123`
+> **Password for all accounts:** `Admin123!`
 
 ---
 
-## 🛡️ System Admin
+## ??? System Admin
 
 | Name | Email | Password | Notes |
 |---|---|---|---|
-| System Administrator | `admin@meditrack.com` | `MediTrack@123` | Full system access, Django admin panel |
+| System Administrator | `admin@meditrack.com` | `Admin123!` | Full system access, Django admin panel |
 
 ---
 
-## 🏥 Hospital Admins
+## ?? Hospitals & Hospital Admins
 
-| Name | Email | Password | Hospital |
+| Hospital | City | Hospital Admin Email | Password |
 |---|---|---|---|
-| Rajesh Kumar | `admin.apollo@meditrack.com` | `MediTrack@123` | Apollo Hospitals Chennai |
-| Priya Sharma | `admin.fortis@meditrack.com` | `MediTrack@123` | Fortis Hospital Bangalore |
+| City General Hospital | New York | `admin@citygeneral.com` | `Admin123!` |
+| Metro Health Center | Chicago | `admin@metrohealth.com` | `Admin123!` |
+| Westside Clinic | Los Angeles | `admin@westside.com` | `Admin123!` |
 
 ---
 
-## 🩺 Doctors
+## ?? Doctors
 
-| Name | Email | Password | Hospital | Specialization | Reg No |
-|---|---|---|---|---|---|
-| Dr. Arun Venkatesh | `dr.arun.venkatesh@meditrack.com` | `MediTrack@123` | Apollo Hospitals Chennai | Cardiology | REG10000 |
-| Dr. Meena Raghavan | `dr.meena.raghavan@meditrack.com` | `MediTrack@123` | Apollo Hospitals Chennai | Neurology | REG10001 |
-| Dr. Suresh Gowda | `dr.suresh.gowda@meditrack.com` | `MediTrack@123` | Fortis Hospital Bangalore | Orthopedics | REG10002 |
-| Dr. Kavya Nair | `dr.kavya.nair@meditrack.com` | `MediTrack@123` | Fortis Hospital Bangalore | Dermatology | REG10003 |
-| Dr. Arjun Pillai | `dr.arjun.solo@meditrack.com` | `MediTrack@123` | MediCare Clinic (Solo Practice) | General Medicine | REG20000 |
+> Doctors self-register at `http://localhost:3000/register` ? select **Doctor**.
+> They appear in **Hospital Admin ? Doctor Approvals** as **Pending** until approved.
+
+_No doctors exist yet. Add them after deployment via the registration page._
 
 ---
 
-## 👩‍⚕️ Staff
+## ????? Staff
 
-| Name | Email | Password | Hospital | Role Title |
-|---|---|---|---|---|
-| Sunita Devi | `staff_sunita_apollo@meditrack.com` | `MediTrack@123` | Apollo Hospitals Chennai | Head Nurse |
-| Mohan Das | `staff_mohan_apollo@meditrack.com` | `MediTrack@123` | Apollo Hospitals Chennai | Lab Technician |
-| Anitha Rao | `staff_anitha_fortis@meditrack.com` | `MediTrack@123` | Fortis Hospital Bangalore | Receptionist |
-| Ramesh Babu | `staff_ramesh_fortis@meditrack.com` | `MediTrack@123` | Fortis Hospital Bangalore | Nursing Assistant |
+> Staff are **created by the Hospital Admin** from inside the dashboard.
+> Go to **Hospital Admin Dashboard ? Staff** ? click **"Add Staff"**.
+> No self-registration needed � the Hospital Admin sets their credentials directly.
 
----
-
-## 👤 Patients
-
-> All patients have a **10-digit unique Patient ID** and a **QR code** generated for them.
-
-| Name | Email | Password | Patient ID | Blood Group | Hospital |
-|---|---|---|---|---|---|
-| Hemanth Rajan | `hemanth.rajan@patient.meditrack.com` | `MediTrack@123` | `9632530854` | B+ | Apollo Hospitals Chennai |
-| Deepika Mohan | `deepika.mohan@patient.meditrack.com` | `MediTrack@123` | `3512095764` | A+ | Apollo Hospitals Chennai |
-| Suresh Patel | `suresh.patel@patient.meditrack.com` | `MediTrack@123` | `1318028520` | O+ | Apollo Hospitals Chennai |
-| Lalitha Krishnamurthy | `lalitha.km@patient.meditrack.com` | `MediTrack@123` | `0050975943` | AB+ | Apollo Hospitals Chennai |
-| Arjun Singh | `arjun.singh@patient.meditrack.com` | `MediTrack@123` | `3930519847` | B- | Apollo Hospitals Chennai |
-| Nithya Sundaram | `nithya.sundaram@patient.meditrack.com` | `MediTrack@123` | `3213355238` | A- | Fortis Hospital Bangalore |
-| Karan Mehta | `karan.mehta@patient.meditrack.com` | `MediTrack@123` | `3473293587` | O- | Fortis Hospital Bangalore |
-| Pooja Agarwal | `pooja.agarwal@patient.meditrack.com` | `MediTrack@123` | `1357060483` | AB- | Fortis Hospital Bangalore |
-| Vijay Bhat | `vijay.bhat@patient.meditrack.com` | `MediTrack@123` | `0892191704` | B+ | Fortis Hospital Bangalore |
-| Shalini Nair | `shalini.nair@patient.meditrack.com` | `MediTrack@123` | `7993425275` | O+ | MediCare Clinic (Solo Practice) |
+_No staff exist yet. Hospital Admins can add them from their dashboard._
 
 ---
 
-## 🏥 Hospitals Reference
+## ?? Patients
 
-| Hospital Name | City | State | Email |
-|---|---|---|---|
-| Apollo Hospitals Chennai | Chennai | Tamil Nadu | `info.chennai@apollohospitals.com` |
-| Fortis Hospital Bangalore | Bangalore | Karnataka | `corporate.bangalore@fortishealthcare.com` |
-| MediCare Clinic (Solo Practice) | Chennai | Tamil Nadu | `info@medicareclinic.in` |
+> Patients self-register at `http://localhost:3000/register` ? select **Patient**.
+> Staff can also register walk-in patients from **Staff Dashboard ? Patients ? Register New Patient**.
+
+_No patients exist yet._
 
 ---
 
-## 🔗 Quick Login Links
+## ?? Quick Links
 
-| Role | URL |
+| | URL |
 |---|---|
-| All Roles | `http://localhost:3000/login` |
-| Django Admin | `http://localhost:8000/admin/` |
+| App Login | `http://localhost:3000/login` |
+| Register | `http://localhost:3000/register` |
+| Django Admin Panel | `http://localhost:8000/admin/` |
 
-> [!TIP]
-> To re-seed the database fresh at any time, run:
-> ```bash
-> python manage.py seed_demo --clear
-> ```
+---
+
+> [!NOTE]
+> Database was fully reset. Only the System Admin and 3 hospitals (with their hospital admins) exist.
+> All doctors, staff, and patients must be created fresh after deployment.

@@ -1,9 +1,20 @@
+import random
+import string
+
 from django.db import models
 from django.conf import settings
 from meditrack.fields import SafeCloudinaryField
 from encrypted_model_fields.fields import EncryptedTextField
 
 from hospitals.models import Hospital
+
+
+def generate_patient_id():
+    """Generate a unique 10-digit numeric patient ID."""
+    while True:
+        pid = "".join(random.choices(string.digits, k=10))
+        if not Patient.objects.filter(patient_id=pid).exists():
+            return pid
 
 
 class Patient(models.Model):
@@ -35,6 +46,11 @@ class Patient(models.Model):
             models.Index(fields=["patient_id"]),
             models.Index(fields=["user"]),
         ]
+
+    def save(self, *args, **kwargs):
+        if not self.patient_id:
+            self.patient_id = generate_patient_id()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.patient_id} - {self.user.get_full_name()}"

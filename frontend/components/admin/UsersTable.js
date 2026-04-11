@@ -32,7 +32,7 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
   
   const [form, setForm] = useState({
     username: "", email: "", first_name: "", last_name: "", phone: "",
-    password: "", role: "PATIENT", hospital_id: "",
+    password: "", role: "PATIENT", hospital_id: "", specialization: "",
   });
 
   const load = useCallback(async () => {
@@ -71,7 +71,7 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ username: "", email: "", first_name: "", last_name: "", phone: "", password: "", role: "PATIENT", hospital_id: "" });
+    setForm({ username: "", email: "", first_name: "", last_name: "", phone: "", password: "", role: "PATIENT", hospital_id: "", specialization: "" });
     setOpen(true);
   };
 
@@ -79,7 +79,7 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
     setEditing(u);
     setForm({
       username: u.username || "", email: u.email || "", first_name: u.first_name || "", last_name: u.last_name || "",
-      phone: u.phone || "", password: "", role: u.role || "PATIENT", hospital_id: u.hospital_id || "",
+      phone: u.phone || "", password: "", role: u.role || "PATIENT", hospital_id: u.hospital_id || "", specialization: u.specialization || "",
     });
     setOpen(true);
   };
@@ -157,6 +157,7 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Specialization</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Hospital</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Verified</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
@@ -178,6 +179,13 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
                       </td>
                       <td className="px-6 py-4">
                         <Badge variant={ROLE_COLORS[u.role?.toUpperCase()] || "gray"}>{u.role}</Badge>
+                      </td>
+                      <td className="px-6 py-4 hidden sm:table-cell">
+                        {u.role?.toUpperCase() === "DOCTOR" && u.specialization ? (
+                           <span className="text-sm text-gray-600">{u.specialization}</span>
+                        ) : (
+                           <span className="text-sm text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-600">
                         {getHospitalName(u.hospital_id)}
@@ -236,6 +244,9 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
                 {Object.keys(ROLE_COLORS).map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
+            {form.role === "DOCTOR" && (
+              <Input label="Specialization" value={form.specialization || ""} onChange={(e) => setForm({ ...form, specialization: e.target.value })} />
+            )}
             {["DOCTOR", "STAFF", "HOSPITAL_ADMIN"].includes(form.role) && (
               <div className="col-span-2 flex flex-col gap-1.5 w-full">
                 <label className="text-sm font-medium text-gray-700">Hospital ID</label>
