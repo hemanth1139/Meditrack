@@ -173,7 +173,9 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for listing and updating users."""
 
     department = serializers.SerializerMethodField()
+    hospital_name = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
+
 
     class Meta:
         model = User
@@ -187,6 +189,7 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "hospital",
             "hospital_id",
+            "hospital_name",
             "is_verified",
             "department",
             "created_at",
@@ -194,13 +197,18 @@ class UserSerializer(serializers.ModelSerializer):
             "medical_reg_number",
             "status",
         )
+
         read_only_fields = ("id", "role", "is_verified", "status")
 
     def get_department(self, obj):
         return getattr(obj, "department", None)
 
+    def get_hospital_name(self, obj):
+        return obj.hospital.name if obj.hospital else "System"
+
     def get_created_at(self, obj):
         return obj.date_joined.isoformat() if obj.date_joined else None
+
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.exceptions import AuthenticationFailed

@@ -154,18 +154,22 @@ export default function AdminDoctorsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {approved.map((doc) => {
-                    const name = doc.first_name || doc.last_name ? `${doc.first_name || ''} ${doc.last_name || ''}`.trim() : doc.email?.split('@')[0] || doc.username || "Doctor";
+                    const fullName = (doc.first_name && doc.last_name && doc.first_name !== doc.last_name)
+                      ? `${doc.first_name} ${doc.last_name}`
+                      : doc.first_name || doc.last_name || doc.email?.split('@')[0] || doc.username || "Doctor";
                     return (
+
                       <tr key={doc.id} className="hover:bg-gray-50/80 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <Avatar size="sm" name={name} />
+                            <Avatar size="sm" name={fullName} />
                             <div>
-                               <div className="text-sm font-semibold text-gray-900">{name}</div>
+                               <div className="text-sm font-semibold text-gray-900">{fullName}</div>
                                <div className="text-xs text-gray-500">{doc.email}</div>
                             </div>
                           </div>
                         </td>
+
                         <td className="px-6 py-4">
                           <Badge variant="blue">{doc.specialization || "General"}</Badge>
                         </td>
