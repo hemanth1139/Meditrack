@@ -42,6 +42,7 @@ class Patient(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["patient_id"]),
             models.Index(fields=["user"]),

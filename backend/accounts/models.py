@@ -45,6 +45,7 @@ class User(AbstractUser):
     role_title = models.CharField(max_length=255, blank=True)
 
     class Meta:
+        ordering = ['-date_joined']
         indexes = [
             models.Index(fields=["role"]),
             models.Index(fields=["hospital"]),

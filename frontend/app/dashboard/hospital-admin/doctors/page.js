@@ -165,7 +165,7 @@ export default function HospitalAdminDoctorsPage() {
                       ) : (
                         pending.map((d) => (
                           <TableRow key={d.id} className="hover:bg-slate-50">
-                            <TableCell className="font-semibold text-slate-900">{d.email || d.username || "—"}</TableCell>
+                            <TableCell className="font-semibold text-slate-900">{[d.first_name, d.last_name].filter(Boolean).join(" ") || d.email || d.username || "—"}</TableCell>
                             <TableCell>{d.specialization || "—"}</TableCell>
                             <TableCell className="font-mono text-xs">{d.medical_reg_number || "—"}</TableCell>
                             <TableCell>{new Date(d.created_at).toLocaleDateString()}</TableCell>
@@ -235,7 +235,7 @@ export default function HospitalAdminDoctorsPage() {
                       ) : (
                         approved.map((d) => (
                           <TableRow key={d.id} className="hover:bg-slate-50">
-                            <TableCell className="font-semibold text-slate-900">{d.email || d.username || "—"}</TableCell>
+                            <TableCell className="font-semibold text-slate-900">{[d.first_name, d.last_name].filter(Boolean).join(" ") || d.email || d.username || "—"}</TableCell>
                             <TableCell>{d.specialization || "—"}</TableCell>
                             <TableCell className="text-center">
                               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">

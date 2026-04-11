@@ -50,12 +50,12 @@ class HospitalViewSet(viewsets.ModelViewSet):
         temp_password = None
         if hospital_admin:
             User = get_user_model()
-            full_name = (hospital_admin.get("full_name") or "").strip()
-            first_name = full_name.split(" ")[0] if full_name else ""
-            last_name = " ".join(full_name.split(" ")[1:]) if full_name else ""
+            first_name = hospital_admin.get("first_name", "")
+            last_name = hospital_admin.get("last_name", "")
             email = hospital_admin.get("email")
             temp_password = hospital_admin.get("password")
             phone = hospital_admin.get("phone", "")
+
 
             if email and temp_password:
                 username = email.split("@")[0]

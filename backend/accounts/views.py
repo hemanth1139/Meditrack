@@ -8,12 +8,13 @@ from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from axes.decorators import axes_dispatch
-from rest_framework import generics, status, viewsets
-from rest_framework.permissions import AllowAny
-
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from meditrack.utils import api_response, send_email
 from .permissions import IsAdminUserRole, IsHospitalAdmin
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, NotificationSerializer
+
+class LoginRateThrottle(AnonRateThrottle):
+    rate = '20/min'
 
 class AuthMeView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
@@ -162,104 +163,40 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 class DoctorAdminViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for Hospital Admins to manage doctors in their hospital.
-    Fetches only PENDING doctors by default, or all doctors in hospital.
+    ViewSet for Admin to manage doctors (Approved vs Pending).
     """
+    queryset = User.objects.filter(role=User.Roles.DOCTOR).order_by("-id")
     serializer_class = UserSerializer
 
     def get_permissions(self):
-        return [IsAuthenticated()]
-
-    def get_queryset(self):
-        qs = User.objects.filter(role=User.Roles.DOCTOR).order_by("-date_joined")
-        if self.request.user.role == "HOSPITAL_ADMIN":
-            return qs.filter(hospital=self.request.user.hospital)
-        elif self.request.user.role == "ADMIN":
-            return qs
-        return qs.none()
-
-    @action(detail=False, methods=["get"], url_path="pending")
-    def pending(self, request):
-        qs = self.get_queryset().filter(status=User.DoctorStatus.PENDING)
-        
-        limit = request.query_params.get("limit")
-        if limit and hasattr(self, 'paginator') and hasattr(self.paginator, 'page_size'):
-            self.paginator.page_size = int(limit)
-            
-        page = self.paginate_queryset(qs)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return api_response(True, {
-                "data": serializer.data,
-                "total": self.paginator.page.paginator.count,
-                "page": self.paginator.page.number,
-                "totalPages": self.paginator.page.paginator.num_pages
-            }, "Pending doctors")
-
-        return api_response(True, self.get_serializer(qs, many=True).data, "Pending doctors")
+        return [IsAuthenticated(), IsAdminUserRole()]
 
     @action(detail=False, methods=["get"], url_path="approved")
     def approved(self, request):
-        qs = self.get_queryset().filter(status=User.DoctorStatus.APPROVED)
-        
-        limit = request.query_params.get("limit")
-        if limit and hasattr(self, 'paginator') and hasattr(self.paginator, 'page_size'):
-            self.paginator.page_size = int(limit)
-            
-        page = self.paginate_queryset(qs)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return api_response(True, {
-                "data": serializer.data,
-                "total": self.paginator.page.paginator.count,
-                "page": self.paginator.page.number,
-                "totalPages": self.paginator.page.paginator.num_pages
-            }, "Approved doctors")
+        qs = self.get_queryset().filter(is_verified=True, is_active=True)
+        serializer = self.get_serializer(qs, many=True)
+        return api_response(True, serializer.data, "Approved doctors")
 
-        return api_response(True, self.get_serializer(qs, many=True).data, "Approved doctors")
+    @action(detail=False, methods=["get"], url_path="pending")
+    def pending(self, request):
+        qs = self.get_queryset().filter(is_verified=False, is_active=True)
+        serializer = self.get_serializer(qs, many=True)
+        return api_response(True, serializer.data, "Pending doctors")
 
     @action(detail=True, methods=["post"], url_path="approve")
     def approve(self, request, pk=None):
         doctor = self.get_object()
-        if doctor.status != User.DoctorStatus.PENDING:
-            return api_response(False, None, "Only pending doctors can be approved")
-        
-        doctor.status = User.DoctorStatus.APPROVED
         doctor.is_verified = True
         doctor.save()
-        
-        from accounts.models import AuditLog
         AuditLog.objects.create(
             user=request.user,
             action="DOCTOR_APPROVED",
             target_model="User",
             target_id=str(doctor.id),
-            description="Doctor registration approved",
+            description=f"Doctor {doctor.email} approved",
             ip_address=request.META.get("REMOTE_ADDR"),
         )
-        return api_response(True, self.get_serializer(doctor).data, "Doctor approved")
-
-    @action(detail=True, methods=["post"], url_path="reject")
-    def reject(self, request, pk=None):
-        doctor = self.get_object()
-        if doctor.status != User.DoctorStatus.PENDING:
-            return api_response(False, None, "Only pending doctors can be rejected")
-            
-        reason = request.data.get("reason", "No reason provided")
-        doctor.status = User.DoctorStatus.REJECTED
-        doctor.rejection_reason = reason
-        doctor.save()
-        
-        from accounts.models import AuditLog
-        AuditLog.objects.create(
-            user=request.user,
-            action="DOCTOR_REJECTED",
-            target_model="User",
-            target_id=str(doctor.id),
-            description=f"Doctor registration rejected: {reason}",
-            ip_address=request.META.get("REMOTE_ADDR"),
-        )
-        return api_response(True, self.get_serializer(doctor).data, "Doctor rejected")
+        return api_response(True, None, "Doctor approved")
 
 
 class StaffCreationViewSet(viewsets.ModelViewSet):
@@ -280,20 +217,33 @@ class StaffCreationViewSet(viewsets.ModelViewSet):
         return qs.none()
 
     def create(self, request, *args, **kwargs):
+        if request.user.role not in ["ADMIN", "HOSPITAL_ADMIN"]:
+            return api_response(False, None, "Permission denied")
+
         data = request.data
         email = data.get("email")
         password = data.get("password")
         first_name = data.get("first_name", "")
         last_name = data.get("last_name", "")
+
         role_title = data.get("role_title", "Nurse")
-        
+        department = data.get("department", "")
+        phone = data.get("phone", "")
+
         if not email or not password:
             return api_response(False, None, "Email and password are required")
             
         if User.objects.filter(email=email).exists():
             return api_response(False, None, "User with this email already exists")
 
-        username = email.split("@")[0]
+        # Robust username generation
+        base_username = email.split("@")[0]
+
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
         
         user = User.objects.create(
             username=username,
@@ -302,6 +252,8 @@ class StaffCreationViewSet(viewsets.ModelViewSet):
             last_name=last_name,
             role=User.Roles.STAFF,
             role_title=role_title,
+            department=department,
+            phone=phone,
             hospital=request.user.hospital,
             created_by=request.user,
             is_verified=True,
@@ -316,15 +268,10 @@ class StaffCreationViewSet(viewsets.ModelViewSet):
             action="STAFF_CREATED",
             target_model="User",
             target_id=str(user.id),
-            description="Staff member created",
+            description=f"Staff member {email} created for hospital {request.user.hospital.name if request.user.hospital else 'N/A'}",
             ip_address=request.META.get("REMOTE_ADDR"),
         )
         return api_response(True, self.get_serializer(user).data, "Staff created successfully")
-
-
-
-class LoginRateThrottle(AnonRateThrottle):
-    """Rate limit login to 100 requests per minute per IP."""
 
     rate = "100/min"
 

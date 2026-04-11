@@ -10,8 +10,10 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Search, Plus, Edit2, MoreVertical, QrCode } from "lucide-react";
+import { Search, Plus, Edit2, MoreVertical, QrCode, Power, Eye } from "lucide-react";
 import api from "@/lib/api";
+import PatientQRActions from "@/components/interactable/PatientQRActions";
+
 
 const ROLE_COLORS = {
   ADMIN: "gray",
@@ -34,6 +36,10 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
     username: "", email: "", first_name: "", last_name: "", phone: "",
     password: "", role: "PATIENT", hospital_id: "", specialization: "",
   });
+
+  const [qrOpen, setQrOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+
 
   const load = useCallback(async () => {
     try {
@@ -75,32 +81,35 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
     setOpen(true);
   };
 
-  const openEdit = (u) => {
-    setEditing(u);
-    setForm({
-      username: u.username || "", email: u.email || "", first_name: u.first_name || "", last_name: u.last_name || "",
-      phone: u.phone || "", password: "", role: u.role || "PATIENT", hospital_id: u.hospital_id || "", specialization: u.specialization || "",
-    });
-    setOpen(true);
-  };
 
   const save = async () => {
     try {
-      if (editing) {
-        const payload = { ...form };
-        if (!payload.password) delete payload.password;
-        await api.put(`/users/${editing.id}/`, payload);
-        toast.success("User updated");
-      } else {
-        await api.post("/users/", form);
-        toast.success("User created");
-      }
+      await api.post("/users/", form);
+      toast.success("User created");
       setOpen(false);
       load();
     } catch {
       toast.error("Save failed");
     }
+
   };
+
+  const toggleStatus = async (user) => {
+    try {
+      if (user.is_active) {
+        await api.post(`/users/${user.id}/deactivate/`, { reason: "Deactivated by Administrator" });
+        toast.success("Account deactivated");
+      } else {
+        // Simple activation - assuming put works or we have an activate endpoint
+        await api.put(`/users/${user.id}/`, { is_active: true });
+        toast.success("Account activated");
+      }
+      load();
+    } catch (err) {
+      toast.error("Failed to toggle status");
+    }
+  };
+
 
   const getHospitalName = (id) => {
     if (!id) return "—";
@@ -159,13 +168,16 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Specialization</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Hospital</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Verified</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredItems.map((u) => {
-                  const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username;
+                  const name = (u.first_name && u.last_name && u.first_name === u.last_name)
+                    ? u.first_name
+                    : [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username;
                   return (
                     <tr key={u.id} className="hover:bg-gray-50/80 transition-colors">
                       <td className="px-6 py-4">
@@ -191,23 +203,46 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
                         {getHospitalName(u.hospital_id)}
                       </td>
                       <td className="px-6 py-4">
-                        {u.is_active ? <Badge variant="green">Active</Badge> : <Badge variant="red">Inactive</Badge>}
+                        <div className="flex flex-col gap-1.5">
+                          {u.is_active ? (
+                            <Badge variant="green" className="w-fit font-bold">Active</Badge>
+                          ) : (
+                            <Badge variant="red" className="w-fit font-bold">Inactive</Badge>
+                          )}
+                          {u.is_verified && (
+                            <span className="text-[10px] font-black text-blue-600 border border-blue-100 uppercase tracking-tighter bg-blue-50 px-1.5 py-0.5 rounded-md w-fit">
+                              ✓ Verified
+                            </span>
+                          )}
+                        </div>
                       </td>
+
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {u.role?.toUpperCase() === "PATIENT" && (
-                             <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-blue-600 hover:bg-blue-50">
+                             <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="w-8 h-8 rounded-full text-blue-600 hover:bg-blue-50"
+                              onClick={() => { setSelectedPatient(u); setQrOpen(true); }}
+                              title="Show QR Code"
+                             >
                                <QrCode className="w-4 h-4" />
                              </Button>
                           )}
-                          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50" onClick={() => openEdit(u)}>
-                             <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100">
-                             <MoreVertical className="w-4 h-4" />
+
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className={`w-8 h-8 rounded-full transition-colors ${u.is_active ? "text-red-400 hover:text-red-600 hover:bg-red-50" : "text-green-500 hover:text-green-600 hover:bg-green-50"}`}
+                            onClick={() => toggleStatus(u)}
+                            title={u.is_active ? "Deactivate Account" : "Activate Account"}
+                          >
+                             <Power className="w-4 h-4" />
                           </Button>
                         </div>
                       </td>
+
                     </tr>
                   );
                 })}
@@ -220,12 +255,14 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
       <Modal 
         isOpen={open} 
         onClose={() => setOpen(false)} 
-        title={editing ? "Edit User" : "Create User"}
+        title="Create User Account"
+
         footer={
           <>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={save}>Save User</Button>
+            <Button onClick={save}>Create Account</Button>
           </>
+
         }
       >
         <div className="space-y-4 py-2">
@@ -259,6 +296,33 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
           </div>
         </div>
       </Modal>
+      
+      {/* Patient QR Modal */}
+      <Modal 
+        isOpen={qrOpen} 
+        onClose={() => setQrOpen(false)} 
+        title="Patient Identity Card"
+      >
+        <div className="flex flex-col items-center py-6">
+          <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100 shadow-inner mb-6">
+            <PatientQRActions patientId={selectedPatient?.patient_id} />
+          </div>
+          <div className="w-full space-y-3">
+             <div className="flex justify-between items-center py-2 px-4 bg-blue-50/50 rounded-xl border border-blue-100 text-sm">
+                <span className="text-gray-500 font-medium">Full Name</span>
+                <span className="text-blue-700 font-extrabold">{(selectedPatient?.first_name && selectedPatient?.last_name && selectedPatient.first_name === selectedPatient.last_name) ? selectedPatient.first_name : [selectedPatient?.first_name, selectedPatient?.last_name].filter(Boolean).join(" ")}</span>
+             </div>
+             <div className="flex justify-between items-center py-2 px-4 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+                <span className="text-gray-500 font-medium">Patient ID</span>
+                <code className="text-gray-900 font-black tracking-widest">{selectedPatient?.patient_id || "N/A"}</code>
+             </div>
+          </div>
+          <Button variant="outline" className="mt-8 w-full rounded-xl" onClick={() => setQrOpen(false)}>
+            Close Card
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
+

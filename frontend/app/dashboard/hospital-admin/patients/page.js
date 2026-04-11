@@ -81,7 +81,7 @@ export default function HospitalAdminPatientsPage() {
             <TableBody>
               {filtered.map((p) => (
                 <TableRow key={p.patient_id || Math.random()}>
-                  <TableCell className="font-medium">{p.user_name || p.name || "—"}</TableCell>
+                  <TableCell className="font-medium">{p.user_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || p.name || "—"}</TableCell>
                   <TableCell>{p.patient_id || "—"}</TableCell>
                   <TableCell>{p.date_of_birth ? Math.floor((new Date() - new Date(p.date_of_birth)) / (365.25 * 24 * 60 * 60 * 1000)) : (p.age || "—")}</TableCell>
                   <TableCell>{p.blood_group || "—"}</TableCell>

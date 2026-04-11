@@ -25,7 +25,8 @@ export default function AdminHospitalsPage() {
     state: "",
     phone: "",
     email: "",
-    admin_full_name: "",
+    admin_first_name: "",
+    admin_last_name: "",
     admin_email: "",
     admin_password: "",
     admin_phone: "",
@@ -49,7 +50,7 @@ export default function AdminHospitalsPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ name: "", address: "", city: "", state: "", phone: "", email: "", admin_full_name: "", admin_email: "", admin_password: "", admin_phone: "" });
+    setForm({ name: "", address: "", city: "", state: "", phone: "", email: "", admin_first_name: "", admin_last_name: "", admin_email: "", admin_password: "", admin_phone: "" });
     setOpen(true);
   };
 
@@ -62,7 +63,8 @@ export default function AdminHospitalsPage() {
       state: h.state || "",
       phone: h.phone || "",
       email: h.email || "",
-      admin_full_name: "",
+      admin_first_name: "",
+      admin_last_name: "",
       admin_email: "",
       admin_password: "",
       admin_phone: "",
@@ -84,7 +86,8 @@ export default function AdminHospitalsPage() {
           phone: form.phone,
           email: form.email,
           hospital_admin: {
-            full_name: form.admin_full_name,
+            first_name: form.admin_first_name,
+            last_name: form.admin_last_name,
             email: form.admin_email,
             password: form.admin_password,
             phone: form.admin_phone,
@@ -153,12 +156,12 @@ export default function AdminHospitalsPage() {
                 <p className="text-sm text-gray-500 mb-4 flex items-center gap-1.5 line-clamp-1">
                   {h.city}{h.state ? `, ${h.state}` : ""}
                 </p>
-
+ 
                 <div className="text-xs font-medium text-gray-400 bg-gray-50 rounded-lg p-2.5 mb-6">
                    Added: {h.created_at ? new Date(h.created_at).toLocaleDateString() : "—"}
                 </div>
               </div>
-
+ 
               <div className="flex items-center gap-2 mt-auto">
                 <Button variant="secondary" onClick={() => openEdit(h)} className="flex-1 gap-2 border-gray-200">
                   <Edit2 className="w-4 h-4" /> Edit
@@ -171,7 +174,7 @@ export default function AdminHospitalsPage() {
           ))}
         </div>
       )}
-
+ 
       <Modal 
         isOpen={open} 
         onClose={() => setOpen(false)} 
@@ -199,15 +202,14 @@ export default function AdminHospitalsPage() {
               <Input label="Email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
             </div>
           </div>
-
+ 
           {!editing && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-2 border-b border-gray-100 pb-2">Admin Account</h3>
               <p className="text-xs text-gray-500 mb-4">This person will manage this hospital.</p>
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Input label="Full Name" value={form.admin_full_name} onChange={(e) => setForm((f) => ({ ...f, admin_full_name: e.target.value }))} />
-                </div>
+                <Input label="First Name" value={form.admin_first_name} onChange={(e) => setForm((f) => ({ ...f, admin_first_name: e.target.value }))} />
+                <Input label="Last Name" value={form.admin_last_name} onChange={(e) => setForm((f) => ({ ...f, admin_last_name: e.target.value }))} />
                 <div className="col-span-2">
                   <Input label="Email" type="email" value={form.admin_email} onChange={(e) => setForm((f) => ({ ...f, admin_email: e.target.value }))} />
                 </div>
@@ -220,6 +222,7 @@ export default function AdminHospitalsPage() {
               </div>
             </div>
           )}
+
         </div>
       </Modal>
     </div>

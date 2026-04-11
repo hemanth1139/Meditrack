@@ -150,8 +150,10 @@ export default function AdminDoctorsPage() {
                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Specialization</th>
                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg Number</th>
                     <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Hospital</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Account Status</th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-gray-100">
                   {approved.map((doc) => {
                     const fullName = (doc.first_name && doc.last_name && doc.first_name !== doc.last_name)
@@ -179,7 +181,15 @@ export default function AdminDoctorsPage() {
                         <td className="px-6 py-4 text-sm font-medium text-gray-600">
                           {doc.hospital_name || "System"}
                         </td>
+                        <td className="px-6 py-4">
+                          {doc.is_active ? (
+                            <Badge variant="green" className="w-fit text-[10px] font-bold">Active</Badge>
+                          ) : (
+                            <Badge variant="red" className="w-fit text-[10px] font-bold">Inactive</Badge>
+                          )}
+                        </td>
                       </tr>
+
                     );
                   })}
                 </tbody>

@@ -25,7 +25,8 @@ export default function HospitalAdminStaffPage() {
   const [successOpen, setSuccessOpen] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState(null);
   const [form, setForm] = useState({
-    full_name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     password: "",
     phone: "",
@@ -58,18 +59,19 @@ export default function HospitalAdminStaffPage() {
     }
     try {
       const payload = {
-        full_name: form.full_name,
+        first_name: form.first_name,
+        last_name: form.last_name,
         email: form.email,
         password: form.password,
         phone: form.phone,
         department: form.department,
         role_title: form.role_title,
       };
-      const res = await api.post("/users/create-staff/", payload);
+      const res = await api.post("/users/staff/", payload);
       setCreatedCredentials(res.data?.data || { email: form.email, password: form.password });
       setSuccessOpen(true);
       setOpen(false);
-      setForm({ full_name: "", email: "", password: "", phone: "", department: "", role_title: "" });
+      setForm({ first_name: "", last_name: "", email: "", password: "", phone: "", department: "", role_title: "" });
       load();
     } catch {
       toast.error("Failed to create staff");
@@ -149,7 +151,8 @@ export default function HospitalAdminStaffPage() {
           </DialogHeader>
           <div className="grid gap-3">
             {[
-              { label: "Full name", key: "full_name" },
+              { label: "First Name", key: "first_name" },
+              { label: "Last Name", key: "last_name" },
               { label: "Email", key: "email" },
               { label: "Password", key: "password", type: "password" },
               { label: "Phone", key: "phone" },

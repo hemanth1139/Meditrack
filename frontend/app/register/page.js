@@ -26,7 +26,8 @@ const passwordSchema = z
   );
 
 const patientSchema = z.object({
-  fullName: z.string().min(1, "This field is required"),
+  first_name: z.string().min(1, "This field is required"),
+  last_name: z.string().min(1, "This field is required"),
   email: z.string().email("Enter a valid email address"),
   password: passwordSchema,
   confirmPassword: z.string(),
@@ -44,7 +45,8 @@ const patientSchema = z.object({
 });
 
 const doctorSchema = z.object({
-  fullName: z.string().min(1, "This field is required"),
+  first_name: z.string().min(1, "This field is required"),
+  last_name: z.string().min(1, "This field is required"),
   email: z.string().email("Enter a valid email address"),
   password: passwordSchema,
   confirmPassword: z.string(),
@@ -152,7 +154,7 @@ export default function RegisterPage() {
     mode: "onTouched",
     resolver: zodResolver(patientSchema),
     defaultValues: {
-      fullName: "", email: "", password: "", confirmPassword: "", phone: "",
+      first_name: "", last_name: "", email: "", password: "", confirmPassword: "", phone: "",
       dateOfBirth: "", gender: "", bloodGroup: "", address: "", knownAllergies: "",
       emergencyContactName: "", emergencyContactPhone: "", hospitalId: "",
     },
@@ -163,7 +165,7 @@ export default function RegisterPage() {
     mode: "onTouched",
     resolver: zodResolver(doctorSchema),
     defaultValues: {
-      fullName: "", email: "", password: "", confirmPassword: "", phone: "",
+      first_name: "", last_name: "", email: "", password: "", confirmPassword: "", phone: "",
       specialization: "", qualification: "", department: "", hospitalId: "",
       yearsOfExperience: "", medicalRegNumber: "", medicalCouncil: "",
     },
@@ -191,14 +193,11 @@ export default function RegisterPage() {
   const onSubmitPatient = async (values) => {
     setPatientSubmitting(true);
     try {
-      const nameParts = values.fullName.trim().split(/\s+/);
-      const first_name = nameParts[0] || "";
-      let last_name = nameParts.slice(1).join(" ");
-      if (!last_name) last_name = first_name;
       await api.post("/auth/register/", {
         username: values.email.split("@")[0] || `user${Date.now()}`,
         password: values.password, email: values.email,
-        first_name, last_name, phone: values.phone, role: "PATIENT",
+        first_name: values.first_name, last_name: values.last_name, phone: values.phone, role: "PATIENT",
+
         hospital_id: values.hospitalId || undefined,
         date_of_birth: values.dateOfBirth || null, gender: values.gender || null,
         blood_group: values.bloodGroup || null, address: values.address || null,
@@ -226,18 +225,15 @@ export default function RegisterPage() {
       return;
     }
     try {
-      const nameParts = values.fullName.trim().split(/\s+/);
-      const first_name = nameParts[0] || "";
-      let last_name = nameParts.slice(1).join(" ");
-      if (!last_name) last_name = first_name;
       const formData = new FormData();
       formData.append("username", values.email.split("@")[0] || `user${Date.now()}`);
       formData.append("password", values.password);
       formData.append("email", values.email);
-      formData.append("first_name", first_name || "");
-      formData.append("last_name", last_name || "");
+      formData.append("first_name", values.first_name);
+      formData.append("last_name", values.last_name);
       formData.append("phone", values.phone);
       formData.append("role", "DOCTOR");
+
       if (values.hospitalId) formData.append("hospital_id", String(values.hospitalId));
       formData.append("specialization", values.specialization);
       formData.append("qualification", values.qualification);
@@ -321,7 +317,11 @@ export default function RegisterPage() {
         <div>
           {activeRole === "patient" && (
             <form onSubmit={patientForm.handleSubmit(onSubmitPatient)} className="space-y-5 flex flex-col">
-              <Input label="Full name" placeholder="E.g. John Doe" error={patientForm.formState.errors.fullName?.message} {...patientForm.register("fullName")} />
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="First Name" placeholder="John" error={patientForm.formState.errors.first_name?.message} {...patientForm.register("first_name")} />
+                <Input label="Last Name" placeholder="Doe" error={patientForm.formState.errors.last_name?.message} {...patientForm.register("last_name")} />
+              </div>
+
               <Input label="Email address" type="email" placeholder="you@example.com" error={patientForm.formState.errors.email?.message} {...patientForm.register("email")} />
               
               <div>
@@ -400,7 +400,11 @@ export default function RegisterPage() {
                 </div>
               ) : (
                 <form onSubmit={doctorForm.handleSubmit(onSubmitDoctor)} className="space-y-5 flex flex-col">
-                  <Input label="Full name" placeholder="Dr. John Doe" error={doctorForm.formState.errors.fullName?.message} {...doctorForm.register("fullName")} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input label="First Name" placeholder="John" error={doctorForm.formState.errors.first_name?.message} {...doctorForm.register("first_name")} />
+                    <Input label="Last Name" placeholder="Doe" error={doctorForm.formState.errors.last_name?.message} {...doctorForm.register("last_name")} />
+                  </div>
+
                   <Input label="Email address" type="email" placeholder="you@hospital.com" error={doctorForm.formState.errors.email?.message} {...doctorForm.register("email")} />
                   
                   <div>

@@ -41,7 +41,8 @@ export default function DoctorDashboardPage() {
   }, []);
 
   const today = new Date().toISOString();
-  const firstName = user?.last_name || user?.first_name || user?.username || "Doctor";
+  const firstName = user?.first_name || user?.username || "Doctor";
+  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.username;
 
   if (loading) {
     return (
