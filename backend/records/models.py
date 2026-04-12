@@ -122,6 +122,39 @@ class MedicalRecord(models.Model):
     def __str__(self) -> str:
         return f"{self.patient.patient_id} - {self.visit_type} - {self.status}"
 
+    def save(self, *args, **kwargs):
+        # Only generate hash if status is APPROVED and hash is missing
+        if self.status == self.Status.APPROVED and not self.record_hash:
+            from meditrack.utils import sha256_hash
+            from django.utils import timezone
+            
+            # Ensure dates are set (critical for consistent hashing on first save)
+            if not self.visit_date:
+                self.visit_date = timezone.now()
+            if not self.created_at:
+                self.created_at = timezone.now()
+
+            # Find the most recent approved record for the same patient to link the chain
+            prev_record = MedicalRecord.objects.filter(
+                patient=self.patient, 
+                status=self.Status.APPROVED
+            ).exclude(id=self.id).order_by("-approved_at").first()
+            
+            self.prev_hash = prev_record.record_hash if prev_record else "GENESIS"
+            
+            # Use the same payload format as VerifyIntegrityView in views.py
+            payload = (
+                self.patient.patient_id
+                + self.visit_type
+                + (self.diagnosis or "")
+                + (self.doctor_notes or "")
+                + self.visit_date.isoformat()
+                + self.created_at.isoformat()
+            )
+            self.record_hash = sha256_hash(payload)
+            
+        super().save(*args, **kwargs)
+
 
 class Prescription(models.Model):
     MEDICINE_TYPES = [

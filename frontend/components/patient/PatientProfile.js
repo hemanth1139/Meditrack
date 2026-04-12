@@ -80,6 +80,7 @@ export default function PatientProfile({ patientId: initialPatientId, role, init
   if (profileError || !profileData) return <ProfileError />;
 
   const { patient, vitals, records, documents, stats } = profileData;
+  const patientId = patient?.patient_id || initialPatientId;
 
   const calculateAge = (dob) => {
     if (!dob) return "N/A";
