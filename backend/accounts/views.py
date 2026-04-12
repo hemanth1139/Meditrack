@@ -184,13 +184,20 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 class DoctorAdminViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for Admin to manage doctors (Approved vs Pending).
+    ViewSet for Admin and Hospital Admin to manage doctors (Approved vs Pending).
     """
-    queryset = User.objects.filter(role=User.Roles.DOCTOR).order_by("-id")
     serializer_class = UserSerializer
 
     def get_permissions(self):
-        return [IsAuthenticated(), IsAdminUserRole()]
+        return [IsAuthenticated(), (IsAdminUserRole | IsHospitalAdmin)()]
+
+    def get_queryset(self):
+        qs = User.objects.filter(role=User.Roles.DOCTOR).order_by("-id")
+        user = self.request.user
+        # Hospital admins can only see doctors in their own hospital
+        if user.role == "HOSPITAL_ADMIN":
+            qs = qs.filter(hospital=user.hospital)
+        return qs
 
     @action(detail=False, methods=["get"], url_path="approved")
     def approved(self, request):
@@ -207,6 +214,9 @@ class DoctorAdminViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="approve")
     def approve(self, request, pk=None):
         doctor = self.get_object()
+        # Hospital admins can only approve doctors in their own hospital
+        if request.user.role == "HOSPITAL_ADMIN" and doctor.hospital_id != request.user.hospital_id:
+            return api_response(False, None, "Permission denied")
         doctor.is_verified = True
         doctor.save()
         AuditLog.objects.create(
