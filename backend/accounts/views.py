@@ -161,6 +161,27 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         )
         return api_response(True, None, "User deactivated")
 
+    @action(detail=True, methods=["post"], url_path="activate")
+    def activate(self, request, pk=None):
+        user = self.get_object()
+        if request.user.role not in ["ADMIN", "HOSPITAL_ADMIN"]:
+            return api_response(False, None, "Permission denied")
+        if request.user.role == "HOSPITAL_ADMIN":
+            if user.hospital_id != request.user.hospital_id or user.role not in ["STAFF", "DOCTOR"]:
+                return api_response(False, None, "Permission denied")
+        
+        user.is_active = True
+        user.save()
+        AuditLog.objects.create(
+            user=request.user,
+            action="USER_ACTIVATED",
+            target_model="User",
+            target_id=str(user.id),
+            description=f"User {user.email} activated.",
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+        return api_response(True, None, "User activated")
+
 class DoctorAdminViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Admin to manage doctors (Approved vs Pending).

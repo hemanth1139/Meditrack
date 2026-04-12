@@ -242,7 +242,9 @@ class LoginSerializer(TokenObtainPairSerializer):
             try:
                 matched = User.objects.get(email__iexact=login_input)
                 # Verify password manually
-                if matched.check_password(password) and matched.is_active:
+                if matched.check_password(password):
+                    if not matched.is_active:
+                        raise AuthenticationFailed("Your account has been deactivated. Please contact support.")
                     user = matched
             except User.DoesNotExist:
                 pass
@@ -251,8 +253,19 @@ class LoginSerializer(TokenObtainPairSerializer):
         if user is None:
             try:
                 data = super().validate(attrs)
-            except Exception:
+            except Exception as e:
+                # Check if it failed because the user is inactive
+                try:
+                    user_obj = User.objects.get(**{self.username_field: attrs.get(self.username_field)})
+                    if not user_obj.is_active:
+                        raise AuthenticationFailed("Your account has been deactivated. Please contact support.")
+                except User.DoesNotExist:
+                    pass
                 raise AuthenticationFailed("No active account found with the given credentials.")
+            
+            if not self.user.is_active:
+                raise AuthenticationFailed("Your account has been deactivated. Please contact support.")
+
             data['id'] = self.user.id
             data['email'] = self.user.email
             data['role'] = self.user.role or ("ADMIN" if self.user.is_superuser else "")

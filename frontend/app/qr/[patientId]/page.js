@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated, getRole } from "@/lib/auth";
 
 export default function QRRedirectPage({ params }) {
-  const { patientId } = params;
+  const { patientId } = use(params);
   const router = useRouter();
 
   useEffect(() => {
@@ -24,6 +24,10 @@ export default function QRRedirectPage({ params }) {
       router.replace(`/dashboard/doctor/patient/${patientId}`);
     } else if (role === "STAFF") {
       router.replace(`/dashboard/staff/patient/${patientId}`);
+    } else if (role === "HOSPITAL_ADMIN") {
+      router.replace(`/dashboard/hospital-admin/patients/${patientId}`);
+    } else if (role === "ADMIN") {
+      router.replace(`/dashboard/admin/users`);
     } else {
       router.replace("/dashboard");
     }

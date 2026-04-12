@@ -317,7 +317,7 @@ export default function RegisterPage() {
         <div>
           {activeRole === "patient" && (
             <form onSubmit={patientForm.handleSubmit(onSubmitPatient)} className="space-y-5 flex flex-col">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label="First Name" placeholder="John" error={patientForm.formState.errors.first_name?.message} {...patientForm.register("first_name")} />
                 <Input label="Last Name" placeholder="Doe" error={patientForm.formState.errors.last_name?.message} {...patientForm.register("last_name")} />
               </div>
@@ -332,7 +332,7 @@ export default function RegisterPage() {
               <Input label="Confirm password" type="password" placeholder="••••••••" error={patientForm.formState.errors.confirmPassword?.message} {...patientForm.register("confirmPassword")} />
               <Input label="Phone number" type="tel" placeholder="10-digit number" error={patientForm.formState.errors.phone?.message} {...patientForm.register("phone")} />
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label="Date of birth" type="date" error={patientForm.formState.errors.dateOfBirth?.message} {...patientForm.register("dateOfBirth")} />
                 <div className="flex flex-col gap-1.5 w-full">
                   <label className="text-sm font-medium text-gray-700">Gender</label>
@@ -363,7 +363,7 @@ export default function RegisterPage() {
                 <textarea className={cn("flex min-h-[80px] w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500")} {...patientForm.register("knownAllergies")} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label="Emergency contact name" error={patientForm.formState.errors.emergencyContactName?.message} {...patientForm.register("emergencyContactName")} />
                 <Input label="Emergency phone" type="tel" error={patientForm.formState.errors.emergencyContactPhone?.message} {...patientForm.register("emergencyContactPhone")} />
               </div>
@@ -400,7 +400,7 @@ export default function RegisterPage() {
                 </div>
               ) : (
                 <form onSubmit={doctorForm.handleSubmit(onSubmitDoctor)} className="space-y-5 flex flex-col">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input label="First Name" placeholder="John" error={doctorForm.formState.errors.first_name?.message} {...doctorForm.register("first_name")} />
                     <Input label="Last Name" placeholder="Doe" error={doctorForm.formState.errors.last_name?.message} {...doctorForm.register("last_name")} />
                   </div>
@@ -435,7 +435,7 @@ export default function RegisterPage() {
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input label="Years of experience" type="number" min="0" error={doctorForm.formState.errors.yearsOfExperience?.message} {...doctorForm.register("yearsOfExperience")} />
                     <Input label="Reg Number" placeholder="12345" error={doctorForm.formState.errors.medicalRegNumber?.message} {...doctorForm.register("medicalRegNumber")} />
                   </div>

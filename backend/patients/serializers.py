@@ -63,6 +63,10 @@ class PatientSerializer(serializers.ModelSerializer):
             return None
 
     def create(self, validated_data):
+        # Default known_allergies to empty string if not provided (handles null/missing)
+        if not validated_data.get("known_allergies"):
+            validated_data["known_allergies"] = ""
+            
         user_id = validated_data.pop("user_id")
         hospital_id = validated_data.pop("hospital_id")
         user = User.objects.get(id=user_id)

@@ -90,6 +90,16 @@ export default function HospitalAdminDoctorsPage() {
     }
   };
 
+  const activateDoc = async (doc) => {
+    try {
+      await api.post(`/users/${doc.id}/activate/`, { hospital_id: hospitalId });
+      toast.success("Doctor activated");
+      load();
+    } catch {
+      toast.error("Failed to activate doctor");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-[24px] font-semibold text-slate-900">Doctors Management</div>
@@ -244,9 +254,15 @@ export default function HospitalAdminDoctorsPage() {
                             </TableCell>
                             <TableCell>{new Date(d.created_at).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right">
-                              <Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => { setDocToDeactivate(d); setDeactivateOpen(true); }}>
-                                Deactivate
-                              </Button>
+                              {d.is_active ? (
+                                <Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => { setDocToDeactivate(d); setDeactivateOpen(true); }}>
+                                  Deactivate
+                                </Button>
+                              ) : (
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white border-0 shadow-sm" onClick={() => activateDoc(d)}>
+                                  Activate
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))

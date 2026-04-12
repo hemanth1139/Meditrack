@@ -36,7 +36,7 @@ class Patient(models.Model):
     address = models.TextField()
     emergency_contact_name = models.CharField(max_length=255)
     emergency_contact_phone = models.CharField(max_length=20)
-    known_allergies = EncryptedTextField()
+    known_allergies = EncryptedTextField(blank=True)
     aadhaar_number = EncryptedTextField(null=True, blank=True)
     qr_code = SafeCloudinaryField("qr_code", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -99,6 +99,16 @@ export default function HospitalAdminStaffPage() {
     }
   };
 
+  const activate = async (s) => {
+    try {
+      await api.post(`/users/${s.id}/activate/`, { hospital_id: hospitalId });
+      toast.success("Staff activated");
+      load();
+    } catch {
+      toast.error("Failed to activate staff");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -133,9 +143,15 @@ export default function HospitalAdminStaffPage() {
                   <TableCell>{s.department || "—"}</TableCell>
                   <TableCell>{new Date(s.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
-                    <Button className="bg-red-600 hover:bg-red-700" onClick={() => { setStaffToDeactivate(s); setDeactivateOpen(true); }}>
-                      Deactivate
-                    </Button>
+                    {s.is_active ? (
+                      <Button className="bg-red-600 hover:bg-red-700" onClick={() => { setStaffToDeactivate(s); setDeactivateOpen(true); }}>
+                        Deactivate
+                      </Button>
+                    ) : (
+                      <Button className="bg-green-600 hover:bg-green-700" onClick={() => activate(s)}>
+                        Activate
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

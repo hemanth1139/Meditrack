@@ -100,8 +100,7 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
         await api.post(`/users/${user.id}/deactivate/`, { reason: "Deactivated by Administrator" });
         toast.success("Account deactivated");
       } else {
-        // Simple activation - assuming put works or we have an activate endpoint
-        await api.put(`/users/${user.id}/`, { is_active: true });
+        await api.post(`/users/${user.id}/activate/`);
         toast.success("Account activated");
       }
       load();
