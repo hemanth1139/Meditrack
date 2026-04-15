@@ -691,4 +691,26 @@ class Verify2FAView(views.APIView):
             "hospital_id": getattr(user, "hospital_id", None),
             "requires_password_change": getattr(user, "requires_password_change", False)
         }
-        return api_response(True, data, "Login successful")
+        response = api_response(True, {k: v for k, v in data.items() if k not in ["access", "refresh"]}, "Login successful")
+        from django.conf import settings
+        jwt_settings = getattr(settings, "SIMPLE_JWT", {})
+        
+        response.set_cookie(
+            key=jwt_settings.get("AUTH_COOKIE", "access_token"),
+            value=data["access"],
+            expires=jwt_settings.get("ACCESS_TOKEN_LIFETIME"),
+            secure=jwt_settings.get("AUTH_COOKIE_SECURE", False),
+            httponly=jwt_settings.get("AUTH_COOKIE_HTTP_ONLY", True),
+            samesite=jwt_settings.get("AUTH_COOKIE_SAMESITE", "Lax"),
+            path=jwt_settings.get("AUTH_COOKIE_PATH", "/")
+        )
+        response.set_cookie(
+            key=jwt_settings.get("AUTH_COOKIE_REFRESH", "refresh_token"),
+            value=data["refresh"],
+            expires=jwt_settings.get("REFRESH_TOKEN_LIFETIME"),
+            secure=jwt_settings.get("AUTH_COOKIE_SECURE", False),
+            httponly=jwt_settings.get("AUTH_COOKIE_HTTP_ONLY", True),
+            samesite=jwt_settings.get("AUTH_COOKIE_SAMESITE", "Lax"),
+            path=jwt_settings.get("AUTH_COOKIE_PATH", "/")
+        )
+        return response
