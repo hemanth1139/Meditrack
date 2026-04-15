@@ -161,7 +161,7 @@ export default function RegisterPage() {
     defaultValues: {
       first_name: "", last_name: "", email: "", password: "", confirmPassword: "", phone: "",
       dateOfBirth: "", gender: "", bloodGroup: "", address: "", knownAllergies: "",
-      emergencyContactName: "", emergencyContactPhone: "", hospitalId: "",
+      emergencyContactName: "", emergencyContactPhone: "",
     },
   });
 
@@ -198,13 +198,12 @@ export default function RegisterPage() {
   const onSubmitPatient = async (values) => {
     setPatientSubmitting(true);
     try {
-      // Step 1: Request OTP
-      await api.post("/auth/send-otp/", { phone: values.phone });
+      // Step 1: Request OTP via email
+      await api.post("/auth/send-otp/", { phone: values.phone, email: values.email });
       setPatientData({
         username: values.email.split("@")[0] || `user${Date.now()}`,
         password: values.password, email: values.email,
         first_name: values.first_name, last_name: values.last_name, phone: values.phone, role: "PATIENT",
-        hospital_id: values.hospitalId || undefined,
         date_of_birth: values.dateOfBirth || null, gender: values.gender || null,
         blood_group: values.bloodGroup || null, address: values.address || null,
         known_allergies: values.knownAllergies || null,
@@ -389,14 +388,7 @@ export default function RegisterPage() {
                 <Input label="Emergency phone" type="tel" error={patientForm.formState.errors.emergencyContactPhone?.message} {...patientForm.register("emergencyContactPhone")} />
               </div>
 
-              <div className="flex flex-col gap-1.5 w-full">
-                <label className="text-sm font-medium text-gray-700">Hospital</label>
-                <select className={cn("flex h-10 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500")} {...patientForm.register("hospitalId")}>
-                  <option value="">{loadingHospitals ? "Loading..." : "Select your hospital (optional)"}</option>
-                  {hospitals.map((hospital) => <option key={hospital.id} value={hospital.id}>{hospital.name}</option>)}
-                </select>
-                <p className="text-xs text-gray-400 mt-0.5">Select the hospital you are registered with. If unsure, leave blank.</p>
-              </div>
+
 
               <Button type="submit" className="w-full h-11 text-base mt-2" loading={patientSubmitting}>
                 Continue

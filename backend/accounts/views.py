@@ -321,39 +321,49 @@ class DoctorAdminViewSet(viewsets.ModelViewSet):
 
 class SendOTPView(views.APIView):
     """
-    Endpoint to send an OTP to the user's phone for registration verification.
+    Endpoint to send an OTP via SMS to the user's phone for registration verification.
+    Phone numbers are normalised to E.164 format (+91 prefix for Indian numbers).
     """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        phone = request.data.get("phone")
+        phone = request.data.get("phone", "").strip()
+        email = request.data.get("email", "").strip()
         if not phone:
             return api_response(False, None, "Phone number is required", status=400)
-        
+        if not email:
+            return api_response(False, None, "Email is required", status=400)
+
+        # Normalise to E.164: prepend +91 for 10-digit Indian numbers
+        if phone.startswith("0"):
+            phone = phone[1:]  # strip leading 0
+        if not phone.startswith("+"):
+            phone = "+91" + phone
+
         from django.contrib.auth import get_user_model
         User = get_user_model()
         if User.objects.filter(phone=phone).exists():
             return api_response(False, None, "A user with this phone number already exists", status=400)
+        if User.objects.filter(email__iexact=email).exists():
+            return api_response(False, None, "A user with this email already exists", status=400)
 
         import random
         import hashlib
         from django.core.cache import cache
         otp = str(random.randint(100000, 999999))
         cache_key = f"register_otp_{phone}"
-        
+
         hashed_otp = hashlib.sha256(otp.encode("utf-8")).hexdigest()
         cache.set(cache_key, hashed_otp, timeout=600)  # Valid for 10 minutes
 
-        # Send SMS
+        # Send OTP via SMS using Twilio
         from meditrack.utils import send_sms
         message = f"Your MediTrack verification code is: {otp}. It will expire in 10 minutes."
-        
-        # We will attempt to send SMS. If twilio is misconfigured, we'll return an error.
         success = send_sms(phone, message)
         if not success:
-            return api_response(False, None, "Failed to send SMS. Please check Twilio configuration.", status=500)
-            
-        return api_response(True, None, "OTP sent successfully to " + phone)
+            return api_response(False, None, "Failed to send SMS. Please try again later.", status=500)
+
+        return api_response(True, None, "Verification code sent to " + phone)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -370,11 +380,17 @@ class RegisterView(generics.CreateAPIView):
         
         # Verify OTP for patients
         if data.get("role") == "PATIENT":
-            phone = data.get("phone")
+            phone = data.get("phone", "").strip()
             otp = data.get("otp")
             if not otp:
                 return api_response(False, None, "OTP is required for patient registration", status=400)
-            
+
+            # Normalise to E.164 so cache key matches what SendOTPView stored
+            if phone.startswith("0"):
+                phone = phone[1:]
+            if not phone.startswith("+"):
+                phone = "+91" + phone
+
             import hashlib
             from django.core.cache import cache
             cache_key = f"register_otp_{phone}"
