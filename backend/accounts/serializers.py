@@ -33,7 +33,7 @@ class RegisterSerializer(serializers.Serializer):
     gender = serializers.CharField(required=False)
     blood_group = serializers.CharField(required=False)
     address = serializers.CharField(required=False)
-    known_allergies = serializers.CharField(required=False, allow_blank=True)
+    known_allergies = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     emergency_contact_name = serializers.CharField(required=False)
     emergency_contact_phone = serializers.CharField(required=False)
 
