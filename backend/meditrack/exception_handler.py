@@ -9,8 +9,11 @@ def custom_exception_handler(exc, context):
     """
     response = drf_exception_handler(exc, context)
     if response is None:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.exception("Unhandled exception", exc_info=exc)
         return Response(
-            {"success": False, "data": None, "message": str(exc)},
+            {"success": False, "data": None, "message": "An unexpected error occurred. Please try again later."},
             status=500,
         )
     message = ""

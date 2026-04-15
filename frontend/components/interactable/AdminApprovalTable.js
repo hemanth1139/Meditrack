@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 
 const EmptyState = ({ message }) => (
@@ -13,11 +12,13 @@ const EmptyState = ({ message }) => (
 );
 
 export default function AdminApprovalTable({ pendingDoctors }) {
-  const router = useRouter();
+  const [doctors, setDoctors] = useState(pendingDoctors || []);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+
+  const removeDoctor = (id) => setDoctors((prev) => prev.filter((d) => d.id !== id));
 
   const handleApprove = async (doctor) => {
     if (!confirm(`Approve Dr. ${doctor.name}?`)) return;
@@ -25,7 +26,7 @@ export default function AdminApprovalTable({ pendingDoctors }) {
     try {
       await api.post(`/users/doctors/${doctor.id}/approve/`);
       toast.success("Doctor approved");
-      router.refresh();
+      removeDoctor(doctor.id);
     } catch {
       toast.error("Failed to approve doctor");
     } finally {
@@ -39,16 +40,17 @@ export default function AdminApprovalTable({ pendingDoctors }) {
     try {
       await api.post(`/users/doctors/${rejectTarget.id}/reject/`, { reason: rejectReason });
       toast.success("Doctor rejected");
+      removeDoctor(rejectTarget.id);
       setRejectOpen(false);
       setRejectReason("");
       setRejectTarget(null);
-      router.refresh();
     } catch {
       toast.error("Failed to reject doctor");
     } finally {
       setActionLoading(false);
     }
   };
+
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-6">
@@ -59,7 +61,7 @@ export default function AdminApprovalTable({ pendingDoctors }) {
         </Link>
       </div>
       <div className="overflow-x-auto">
-        {!pendingDoctors?.length ? (
+        {!doctors?.length ? (
           <EmptyState message="No pending approvals 🎉" />
         ) : (
           <table className="min-w-full text-sm">
@@ -73,7 +75,7 @@ export default function AdminApprovalTable({ pendingDoctors }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {pendingDoctors.map((d) => (
+              {doctors.map((d) => (
                 <tr key={d.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3">
                     <div className="font-medium text-gray-800">{d.name}</div>

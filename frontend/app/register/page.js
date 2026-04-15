@@ -149,6 +149,11 @@ export default function RegisterPage() {
   const [doctorSuccess, setDoctorSuccess] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  
+  // OTP state
+  const [showOtp, setShowOtp] = useState(false);
+  const [otpValue, setOtpValue] = useState("");
+  const [patientData, setPatientData] = useState(null);
 
   const patientForm = useForm({
     mode: "onTouched",
@@ -193,11 +198,12 @@ export default function RegisterPage() {
   const onSubmitPatient = async (values) => {
     setPatientSubmitting(true);
     try {
-      await api.post("/auth/register/", {
+      // Step 1: Request OTP
+      await api.post("/auth/send-otp/", { phone: values.phone });
+      setPatientData({
         username: values.email.split("@")[0] || `user${Date.now()}`,
         password: values.password, email: values.email,
         first_name: values.first_name, last_name: values.last_name, phone: values.phone, role: "PATIENT",
-
         hospital_id: values.hospitalId || undefined,
         date_of_birth: values.dateOfBirth || null, gender: values.gender || null,
         blood_group: values.bloodGroup || null, address: values.address || null,
@@ -205,6 +211,21 @@ export default function RegisterPage() {
         emergency_contact_name: values.emergencyContactName || null,
         emergency_contact_phone: values.emergencyContactPhone || null,
       });
+      setShowOtp(true);
+      toast.success("Verification code sent to your email!");
+    } catch (error) {
+      const msg = error?.response?.data?.message || "Failed to send OTP";
+      toast.error(msg);
+    } finally {
+      setPatientSubmitting(false);
+    }
+  };
+
+  const verifyAndRegister = async () => {
+    if (!otpValue || otpValue.length < 6) return toast.error("Please enter a valid 6-digit OTP");
+    setPatientSubmitting(true);
+    try {
+      await api.post("/auth/register/", { ...patientData, otp: otpValue });
       toast.success("Account created! Please sign in.");
       router.push("/login");
     } catch (error) {
@@ -378,9 +399,43 @@ export default function RegisterPage() {
               </div>
 
               <Button type="submit" className="w-full h-11 text-base mt-2" loading={patientSubmitting}>
-                Create Account
+                Continue
               </Button>
             </form>
+          )}
+
+          {activeRole === "patient" && showOtp && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm flex flex-col items-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                  <Activity className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 text-center">Verify your phone number</h3>
+                <p className="mt-2 text-sm text-gray-500 text-center mb-6">
+                  We've sent a 6-digit verification code via SMS to <strong>{patientData?.phone}</strong>
+                </p>
+                <Input 
+                  placeholder="Enter 6-digit code" 
+                  value={otpValue} 
+                  onChange={(e) => setOtpValue(e.target.value)} 
+                  maxLength={6}
+                  className="text-center tracking-[0.5em] font-mono text-lg"
+                />
+                <Button 
+                  className="w-full mt-6" 
+                  onClick={verifyAndRegister} 
+                  loading={patientSubmitting}
+                >
+                  Verify & Register
+                </Button>
+                <button 
+                  onClick={() => setShowOtp(false)} 
+                  className="mt-4 text-sm font-medium text-gray-500 hover:text-gray-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
 
           {activeRole === "doctor" && (

@@ -25,7 +25,7 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            return [permissions.IsAuthenticated(), (IsDoctor | IsStaff)()]
+            return [permissions.IsAuthenticated()]
         if self.action in ["approve", "reject", "flag"]:
             return [permissions.IsAuthenticated(), IsDoctor()]
         if self.action == "destroy":
@@ -58,6 +58,8 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         return api_response(True, serializer.data, "Records fetched")
 
     def create(self, request, *args, **kwargs):
+        if request.user.role not in ["DOCTOR", "STAFF"]:
+            return api_response(False, None, "You don't have permission to do this", status=403)
         data = request.data.copy()
         prescriptions_data = data.pop("prescriptions", [])
         
@@ -125,6 +127,16 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
             return api_response(False, None, "You can only view your own records")
         if user.role == "PATIENT" and record.status != MedicalRecord.Status.APPROVED:
             return api_response(False, None, "Patients can only view approved records")
+        
+        AuditLog.objects.create(
+            user=user,
+            action="RECORD_VIEWED",
+            target_model="MedicalRecord",
+            target_id=str(record.id),
+            description=f"Record viewed by {user.email}",
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+        
         serializer = self.get_serializer(record)
         return api_response(True, serializer.data, "Record detail")
 

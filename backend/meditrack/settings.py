@@ -188,7 +188,6 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "accounts.permissions.CookieJWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -208,13 +207,20 @@ REST_FRAMEWORK = {
 
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
 
-FIELD_ENCRYPTION_KEY = config(
-    "FIELD_ENCRYPTION_KEY",
-    default="qxQKF1QWtZcSfawgBBGl5_ffgTrIbhpKy6tFeacax2k=",
-)
+FIELD_ENCRYPTION_KEY = config("FIELD_ENCRYPTION_KEY")
 
 # Authentication Security Limits (Django-Axes)
 # Increased to 100 to prevent lockout during testing and demos.
 AXES_FAILURE_LIMIT = 100
 AXES_PROXY_COUNT = 1 # Recommended if running behind normal reverse proxies
 AXES_RESET_ON_SUCCESS = True # Resets the counter if they eventually guess correct
+
+# Security Headers
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = not DEBUG

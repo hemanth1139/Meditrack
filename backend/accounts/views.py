@@ -12,6 +12,8 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from meditrack.utils import api_response, send_email
 from .permissions import IsAdminUserRole, IsHospitalAdmin
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, NotificationSerializer
+import random, hashlib
+from django.core.cache import cache
 
 class LoginRateThrottle(AnonRateThrottle):
     rate = '20/min'
@@ -182,6 +184,72 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         )
         return api_response(True, None, "User activated")
 
+    @action(detail=False, methods=["post"], url_path="create-staff")
+    def create_staff(self, request):
+        """Create a new STAFF account. Only ADMIN or HOSPITAL_ADMIN may call this."""
+        if request.user.role not in ["ADMIN", "HOSPITAL_ADMIN"]:
+            return api_response(False, None, "Permission denied", status=403)
+
+        data = request.data
+        email = data.get("email", "").strip()
+        password = data.get("password", "").strip()
+        first_name = data.get("first_name", "").strip()
+        last_name = data.get("last_name", "").strip()
+        role_title = data.get("role_title", "Staff").strip()
+        department = data.get("department", "").strip()
+        phone = data.get("phone", "").strip()
+
+        if not email or not password:
+            return api_response(False, None, "Email and password are required")
+
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            return api_response(False, None, " ".join(e.messages), status=400)
+
+        if User.objects.filter(email__iexact=email).exists():
+            return api_response(False, None, "A user with this email already exists")
+
+        # Unique username from email prefix
+        base_username = email.split("@")[0]
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        user = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role=User.Roles.STAFF,
+            role_title=role_title,
+            department=department,
+            phone=phone,
+            hospital=request.user.hospital,
+            created_by=request.user,
+            is_verified=True,
+            is_active=True,
+        )
+        user.set_password(password)  # hash before first save
+        user.save()
+
+        AuditLog.objects.create(
+            user=request.user,
+            action="STAFF_CREATED",
+            target_model="User",
+            target_id=str(user.id),
+            description=(
+                f"Staff member {email} created for hospital "
+                f"{request.user.hospital.name if request.user.hospital else 'N/A'}"
+            ),
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+        return api_response(True, self.get_serializer(user).data, "Staff created successfully")
+
 class DoctorAdminViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Admin and Hospital Admin to manage doctors (Approved vs Pending).
@@ -214,10 +282,10 @@ class DoctorAdminViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="approve")
     def approve(self, request, pk=None):
         doctor = self.get_object()
-        # Hospital admins can only approve doctors in their own hospital
         if request.user.role == "HOSPITAL_ADMIN" and doctor.hospital_id != request.user.hospital_id:
             return api_response(False, None, "Permission denied")
         doctor.is_verified = True
+        doctor.status = "APPROVED"
         doctor.save()
         AuditLog.objects.create(
             user=request.user,
@@ -229,94 +297,98 @@ class DoctorAdminViewSet(viewsets.ModelViewSet):
         )
         return api_response(True, None, "Doctor approved")
 
-
-class StaffCreationViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for Hospital Admins to create new staff natively.
-    """
-    serializer_class = UserSerializer
-
-    def get_permissions(self):
-        return [IsAuthenticated()]
-
-    def get_queryset(self):
-        qs = User.objects.filter(role=User.Roles.STAFF).order_by("-date_joined")
-        if self.request.user.role == "HOSPITAL_ADMIN":
-            return qs.filter(hospital=self.request.user.hospital)
-        elif self.request.user.role == "ADMIN":
-            return qs
-        return qs.none()
-
-    def create(self, request, *args, **kwargs):
-        if request.user.role not in ["ADMIN", "HOSPITAL_ADMIN"]:
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, pk=None):
+        doctor = self.get_object()
+        if request.user.role == "HOSPITAL_ADMIN" and doctor.hospital_id != request.user.hospital_id:
             return api_response(False, None, "Permission denied")
-
-        data = request.data
-        email = data.get("email")
-        password = data.get("password")
-        first_name = data.get("first_name", "")
-        last_name = data.get("last_name", "")
-
-        role_title = data.get("role_title", "Nurse")
-        department = data.get("department", "")
-        phone = data.get("phone", "")
-
-        if not email or not password:
-            return api_response(False, None, "Email and password are required")
-            
-        if User.objects.filter(email=email).exists():
-            return api_response(False, None, "User with this email already exists")
-
-        # Robust username generation
-        base_username = email.split("@")[0]
-
-        username = base_username
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
-        
-        user = User.objects.create(
-            username=username,
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            role=User.Roles.STAFF,
-            role_title=role_title,
-            department=department,
-            phone=phone,
-            hospital=request.user.hospital,
-            created_by=request.user,
-            is_verified=True,
-            is_active=True
-        )
-        user.set_password(password)
-        user.save()
-
-        from accounts.models import AuditLog
+        reason = request.data.get("reason", "").strip()
+        doctor.is_verified = False
+        doctor.status = "REJECTED"
+        doctor.rejection_reason = reason
+        doctor.save()
         AuditLog.objects.create(
             user=request.user,
-            action="STAFF_CREATED",
+            action="DOCTOR_REJECTED",
             target_model="User",
-            target_id=str(user.id),
-            description=f"Staff member {email} created for hospital {request.user.hospital.name if request.user.hospital else 'N/A'}",
+            target_id=str(doctor.id),
+            description=f"Doctor {doctor.email} rejected. Reason: {reason}",
             ip_address=request.META.get("REMOTE_ADDR"),
         )
-        return api_response(True, self.get_serializer(user).data, "Staff created successfully")
+        return api_response(True, None, "Doctor rejected")
 
-    rate = "100/min"
+
+class SendOTPView(views.APIView):
+    """
+    Endpoint to send an OTP to the user's phone for registration verification.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        phone = request.data.get("phone")
+        if not phone:
+            return api_response(False, None, "Phone number is required", status=400)
+        
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        if User.objects.filter(phone=phone).exists():
+            return api_response(False, None, "A user with this phone number already exists", status=400)
+
+        import random
+        import hashlib
+        from django.core.cache import cache
+        otp = str(random.randint(100000, 999999))
+        cache_key = f"register_otp_{phone}"
+        
+        hashed_otp = hashlib.sha256(otp.encode("utf-8")).hexdigest()
+        cache.set(cache_key, hashed_otp, timeout=600)  # Valid for 10 minutes
+
+        # Send SMS
+        from meditrack.utils import send_sms
+        message = f"Your MediTrack verification code is: {otp}. It will expire in 10 minutes."
+        
+        # We will attempt to send SMS. If twilio is misconfigured, we'll return an error.
+        success = send_sms(phone, message)
+        if not success:
+            return api_response(False, None, "Failed to send SMS. Please check Twilio configuration.", status=500)
+            
+        return api_response(True, None, "OTP sent successfully to " + phone)
 
 
 class RegisterView(generics.CreateAPIView):
     """
     Endpoint for patient or doctor self-registration.
+    Requires OTP verification for patients.
     """
 
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        data = request.data.copy()
+        
+        # Verify OTP for patients
+        if data.get("role") == "PATIENT":
+            phone = data.get("phone")
+            otp = data.get("otp")
+            if not otp:
+                return api_response(False, None, "OTP is required for patient registration", status=400)
+            
+            import hashlib
+            from django.core.cache import cache
+            cache_key = f"register_otp_{phone}"
+            cached_hash = cache.get(cache_key)
+            
+            if not cached_hash:
+                return api_response(False, None, "OTP has expired or is invalid", status=400)
+                
+            provided_hash = hashlib.sha256(str(otp).encode("utf-8")).hexdigest()
+            if provided_hash != cached_hash:
+                return api_response(False, None, "Invalid OTP", status=400)
+                
+            cache.delete(cache_key)
+
+        serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         AuditLog.objects.create(

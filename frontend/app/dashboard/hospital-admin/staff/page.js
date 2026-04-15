@@ -67,7 +67,7 @@ export default function HospitalAdminStaffPage() {
         department: form.department,
         role_title: form.role_title,
       };
-      const res = await api.post("/users/staff/", payload);
+      const res = await api.post("/users/create-staff/", payload);
       setCreatedCredentials(res.data?.data || { email: form.email, password: form.password });
       setSuccessOpen(true);
       setOpen(false);
