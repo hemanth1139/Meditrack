@@ -447,6 +447,10 @@ class LoginView(TokenObtainPairView):
                 ip_address=request.META.get("REMOTE_ADDR"),
             )
 
+        # If the serializer returned a 2FA challenge (admin/hospital-admin), return it immediately
+        if "requires_2fa" in data:
+            return api_response(True, dict(data), "2FA required")
+
         response = api_response(True, {k: v for k, v in data.items() if k not in ["access", "refresh"]}, "Login successful")
         from django.conf import settings
         jwt_settings = getattr(settings, "SIMPLE_JWT", {})
