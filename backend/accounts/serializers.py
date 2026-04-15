@@ -247,6 +247,7 @@ class LoginSerializer(TokenObtainPairSerializer):
                     if not matched.is_active:
                         raise AuthenticationFailed("Your account has been deactivated. Please contact support.")
                     user = matched
+                    self.user = matched  # keep self.user in sync
             except User.DoesNotExist:
                 pass
 
@@ -263,13 +264,12 @@ class LoginSerializer(TokenObtainPairSerializer):
                 except User.DoesNotExist:
                     pass
                 raise AuthenticationFailed("No active account found with the given credentials.")
-            
-            if not self.user.is_active:
+
+            user = self.user  # set from super().validate() above
+            if not user.is_active:
                 raise AuthenticationFailed("Your account has been deactivated. Please contact support.")
 
-        
         # Unified token generation
-        user = self.user
         role = user.role or ("ADMIN" if user.is_superuser else "USER")
         
         # Intercept for 2FA on Admin/Hospital Admin
