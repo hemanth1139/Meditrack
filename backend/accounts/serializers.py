@@ -201,6 +201,7 @@ class UserSerializer(serializers.ModelSerializer):
             "medical_reg_number",
             "patient_id",
             "status",
+            "requires_password_change",
         )
 
 
@@ -266,27 +267,37 @@ class LoginSerializer(TokenObtainPairSerializer):
             if not self.user.is_active:
                 raise AuthenticationFailed("Your account has been deactivated. Please contact support.")
 
-            data['id'] = self.user.id
-            data['email'] = self.user.email
-            data['role'] = self.user.role or ("ADMIN" if self.user.is_superuser else "")
-            data['first_name'] = self.user.first_name
-            data['last_name'] = self.user.last_name
-            data['hospital_id'] = getattr(self.user, 'hospital_id', None)
-            return data
+        
+        # Unified token generation
+        user = self.user
+        role = user.role or ("ADMIN" if user.is_superuser else "USER")
+        
+        # Intercept for 2FA on Admin/Hospital Admin
+        if role in ["ADMIN", "HOSPITAL_ADMIN"]:
+            import uuid
+            from django.core.cache import cache
+            temp_token = str(uuid.uuid4())
+            # Store user.id in cache for 5 minutes
+            cache.set(f"2fa_pending_{temp_token}", user.id, timeout=300)
+            return {
+                "requires_2fa": True,
+                "temp_token": temp_token,
+                "is_setup": bool(user.totp_secret),
+                "role": role
+            }
 
-        # Email-matched user: issue tokens manually
         from rest_framework_simplejwt.tokens import RefreshToken
-        self.user = user
         refresh = RefreshToken.for_user(user)
         return {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'id': user.id,
-            'email': user.email,
-            'role': user.role or ("ADMIN" if user.is_superuser else "USER"),
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'hospital_id': getattr(user, 'hospital_id', None),
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "id": user.id,
+            "email": user.email,
+            "role": role,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "hospital_id": getattr(user, "hospital_id", None),
+            "requires_password_change": getattr(user, "requires_password_change", False),
         }
 
 from .models import AuditLog, Notification

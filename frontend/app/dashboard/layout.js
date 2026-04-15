@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import RoleGuard from "@/components/shared/RoleGuard";
-import { getRole, isAuthenticated } from "@/lib/auth";
+import { getRole, isAuthenticated, getUser } from "@/lib/auth";
 
 import api from "@/lib/api";
 const ROLE_HOME = {
@@ -54,6 +54,11 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     if (!isAuthenticated()) {
       router.replace("/login");
+      return;
+    }
+    const user = getUser();
+    if (user?.requires_password_change) {
+      router.replace("/change-password");
       return;
     }
     const role = getRole();

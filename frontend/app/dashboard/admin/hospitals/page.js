@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Plus, Edit2, Trash2 } from "lucide-react";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export default function AdminHospitalsPage() {
   const [items, setItems] = useState([]);
@@ -31,6 +32,7 @@ export default function AdminHospitalsPage() {
     admin_password: "",
     admin_phone: "",
   });
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, hospital: null, loading: false });
 
   const load = async () => {
     try {
@@ -102,14 +104,18 @@ export default function AdminHospitalsPage() {
     }
   };
 
-  const del = async (h) => {
-    if (!window.confirm(`Delete ${h.name}?`)) return;
+  const handleDeleteConfirm = async () => {
+    const h = deleteConfirm.hospital;
+    if (!h) return;
+    setDeleteConfirm(prev => ({ ...prev, loading: true }));
     try {
       await api.delete(`/hospitals/${h.id}/`);
       toast.success("Hospital deleted");
+      setDeleteConfirm({ open: false, hospital: null, loading: false });
       load();
     } catch {
       toast.error("Delete failed");
+      setDeleteConfirm(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -166,7 +172,7 @@ export default function AdminHospitalsPage() {
                 <Button variant="secondary" onClick={() => openEdit(h)} className="flex-1 gap-2 border-gray-200">
                   <Edit2 className="w-4 h-4" /> Edit
                 </Button>
-                <Button variant="danger" className="px-3 bg-red-50 text-red-600 hover:bg-red-100 border border-transparent hover:border-transparent transition-colors shadow-none" onClick={() => del(h)}>
+                <Button variant="danger" className="px-3 bg-red-50 text-red-600 hover:bg-red-100 border border-transparent hover:border-transparent transition-colors shadow-none" onClick={() => setDeleteConfirm({ open: true, hospital: h, loading: false })}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -225,6 +231,18 @@ export default function AdminHospitalsPage() {
 
         </div>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, hospital: null, loading: false })}
+        title="Confirm Deletion"
+        description={`You are about to permanently delete the hospital: ${deleteConfirm.hospital?.name}. All staff, doctors, and records tied to this hospital will be aggressively impacted. Type the hospital name to confirm.`}
+        confirmText="Delete Hospital"
+        expectedKeyword={deleteConfirm.hospital?.name || "DELETE"}
+        onConfirm={handleDeleteConfirm}
+        destructive={true}
+        loading={deleteConfirm.loading}
+      />
     </div>
   );
 }

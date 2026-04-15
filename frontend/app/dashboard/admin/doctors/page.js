@@ -20,6 +20,7 @@ export default function AdminDoctorsPage() {
   const [loading, setLoading] = useState(true);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [rejectTyped, setRejectTyped] = useState("");
   const [selected, setSelected] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
@@ -44,6 +45,10 @@ export default function AdminDoctorsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (rejectOpen) setRejectTyped("");
+  }, [rejectOpen]);
 
   const approve = async (doc) => {
     if (!window.confirm(`Approve ${doc.user?.email || "this doctor"}?`)) return;
@@ -206,7 +211,7 @@ export default function AdminDoctorsPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setRejectOpen(false)}>Cancel</Button>
-            <Button variant="danger" onClick={reject}>Reject Application</Button>
+            <Button variant="danger" onClick={reject} disabled={!rejectReason.trim() || rejectTyped !== "REJECT"}>Reject Application</Button>
           </>
         }
       >
@@ -220,7 +225,19 @@ export default function AdminDoctorsPage() {
                onChange={(e) => setRejectReason(e.target.value)}
                placeholder="E.g. Incomplete verification documents"
              />
-          </div>
+           </div>
+           <div className="flex flex-col gap-1.5 mt-2 pt-4 border-t border-gray-100">
+             <div className="bg-red-50 text-red-800 text-xs px-3 py-2 rounded-lg border border-red-100 mb-2">
+               This is a sensitive action. Please confirm.
+             </div>
+             <label className="text-sm font-semibold text-gray-700">Type <span className="font-extrabold select-all tracking-wider font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-900">REJECT</span> to confirm</label>
+             <Input 
+               value={rejectTyped}
+               onChange={(e) => setRejectTyped(e.target.value)}
+               placeholder="REJECT"
+               className="font-mono text-sm"
+             />
+           </div>
         </div>
       </Modal>
     </div>

@@ -233,6 +233,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             created_by=request.user,
             is_verified=True,
             is_active=True,
+            requires_password_change=True,
         )
         user.set_password(password)  # hash before first save
         user.save()
@@ -543,3 +544,131 @@ class NotificationReadView(views.APIView):
         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return api_response(True, None, "Notifications marked as read")
 
+
+class ChangePasswordView(views.APIView):
+    """
+    Endpoint for users to change their password, updating requires_password_change.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        if not old_password or not new_password:
+            return api_response(False, None, 'Old and new passwords are required', status=400)
+
+        if not user.check_password(old_password):
+            return api_response(False, None, 'Incorrect old password', status=400)
+
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        try:
+            validate_password(new_password, user)
+        except ValidationError as e:
+            return api_response(False, None, ' '.join(e.messages), status=400)
+
+        user.set_password(new_password)
+        user.requires_password_change = False
+        user.save()
+
+        AuditLog.objects.create(
+            user=user,
+            action='PASSWORD_CHANGED',
+            target_model='User',
+            target_id=str(user.id),
+            description='User changed their password',
+            ip_address=request.META.get('REMOTE_ADDR'),
+        )
+        return api_response(True, None, 'Password updated successfully')
+
+
+import base64
+import io
+import pyotp
+import qrcode
+from django.core.cache import cache
+from rest_framework_simplejwt.tokens import RefreshToken
+
+class Setup2FAView(views.APIView):
+    permission_classes = []
+
+    def post(self, request):
+        temp_token = request.data.get('temp_token')
+        if not temp_token:
+            return api_response(False, None, 'Token required', 400)
+        
+        user_id = cache.get(f"2fa_pending_{temp_token}")
+        if not user_id:
+            return api_response(False, None, 'Session expired', 400)
+            
+        user = User.objects.get(id=user_id)
+        if user.totp_secret:
+            return api_response(False, None, '2FA already setup', 400)
+        
+        secret = pyotp.random_base32()
+        cache.set(f"2fa_staged_{temp_token}", secret, timeout=300)
+        
+        totp = pyotp.TOTP(secret)
+        uri = totp.provisioning_uri(name=user.email, issuer_name="MediTrack")
+        
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(uri)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        qr_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        
+        return api_response(True, {
+            "qr_code": f"data:image/png;base64,{qr_b64}",
+            "secret": secret
+        }, "2FA setup initiated")
+
+class Verify2FAView(views.APIView):
+    permission_classes = []
+
+    def post(self, request):
+        temp_token = request.data.get('temp_token')
+        code = request.data.get('code')
+        if not temp_token or not code:
+            return api_response(False, None, 'Token and code required', 400)
+            
+        user_id = cache.get(f"2fa_pending_{temp_token}")
+        if not user_id:
+            return api_response(False, None, 'Session expired', 400)
+            
+        user = User.objects.get(id=user_id)
+        
+        secret = user.totp_secret
+        if not secret:
+            secret = cache.get(f"2fa_staged_{temp_token}")
+            if not secret:
+                return api_response(False, None, 'Setup required', 400)
+                
+        totp = pyotp.TOTP(secret)
+        if not totp.verify(code):
+            return api_response(False, None, 'Invalid authentication code', 400)
+            
+        if not user.totp_secret:
+            user.totp_secret = secret
+            user.save()
+            
+        cache.delete(f"2fa_pending_{temp_token}")
+        cache.delete(f"2fa_staged_{temp_token}")
+        
+        refresh = RefreshToken.for_user(user)
+        role = user.role or ("ADMIN" if user.is_superuser else "USER")
+        data = {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "id": user.id,
+            "email": user.email,
+            "role": role,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "hospital_id": getattr(user, "hospital_id", None),
+            "requires_password_change": getattr(user, "requires_password_change", False)
+        }
+        return api_response(True, data, "Login successful")

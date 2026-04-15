@@ -12,6 +12,7 @@ import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Search, Plus, Edit2, MoreVertical, QrCode, Power, Eye } from "lucide-react";
 import api from "@/lib/api";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import PatientQRActions from "@/components/interactable/PatientQRActions";
 
 
@@ -39,6 +40,7 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
 
   const [qrOpen, setQrOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [deactivateConfirm, setDeactivateConfirm] = useState({ open: false, user: null, loading: false });
 
 
   const load = useCallback(async () => {
@@ -96,16 +98,28 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
 
   const toggleStatus = async (user) => {
     try {
-      if (user.is_active) {
-        await api.post(`/users/${user.id}/deactivate/`, { reason: "Deactivated by Administrator" });
-        toast.success("Account deactivated");
-      } else {
+      if (!user.is_active) {
         await api.post(`/users/${user.id}/activate/`);
         toast.success("Account activated");
+        load();
       }
-      load();
     } catch (err) {
       toast.error("Failed to toggle status");
+    }
+  };
+
+  const handleDeactivateConfirm = async () => {
+    const user = deactivateConfirm.user;
+    if (!user) return;
+    setDeactivateConfirm(prev => ({ ...prev, loading: true }));
+    try {
+      await api.post(`/users/${user.id}/deactivate/`, { reason: "Deactivated by Administrator" });
+      toast.success("Account deactivated");
+      setDeactivateConfirm({ open: false, user: null, loading: false });
+      load();
+    } catch (err) {
+      toast.error("Failed to deactivate account");
+      setDeactivateConfirm(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -234,7 +248,13 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
                             variant="ghost" 
                             size="icon" 
                             className={`w-8 h-8 rounded-full transition-colors ${u.is_active ? "text-red-400 hover:text-red-600 hover:bg-red-50" : "text-green-500 hover:text-green-600 hover:bg-green-50"}`}
-                            onClick={() => toggleStatus(u)}
+                            onClick={() => {
+                              if (u.is_active) {
+                                setDeactivateConfirm({ open: true, user: u, loading: false });
+                              } else {
+                                toggleStatus(u);
+                              }
+                            }}
                             title={u.is_active ? "Deactivate Account" : "Activate Account"}
                           >
                              <Power className="w-4 h-4" />
@@ -321,6 +341,18 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
           </Button>
         </div>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deactivateConfirm.open}
+        onClose={() => setDeactivateConfirm({ open: false, user: null, loading: false })}
+        title="Confirm Deactivation"
+        description={`You are about to deactivate the account for ${deactivateConfirm.user?.email || deactivateConfirm.user?.username}. This will block them from accessing the MediTrack system.`}
+        confirmText="Deactivate User"
+        expectedKeyword="DEACTIVATE"
+        onConfirm={handleDeactivateConfirm}
+        destructive={true}
+        loading={deactivateConfirm.loading}
+      />
     </div>
   );
 }

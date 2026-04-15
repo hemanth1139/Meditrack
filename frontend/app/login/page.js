@@ -41,6 +41,18 @@ export default function LoginPage() {
       const data = await login(values.identifier, values.password);
       const role = data?.role;
       
+      if (data?.requires_2fa) {
+        sessionStorage.setItem("2fa_temp_token", data.temp_token);
+        sessionStorage.setItem("2fa_is_setup", String(data.is_setup));
+        router.push("/login/2fa");
+        return;
+      }
+
+      if (data?.requires_password_change) {
+        router.push("/change-password");
+        return;
+      }
+      
       const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
       if (redirectUrl) {
         sessionStorage.removeItem("redirectAfterLogin");

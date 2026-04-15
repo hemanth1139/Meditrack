@@ -4,7 +4,21 @@ import api from "./api";
 export const login = async (email, password) => {
   const res = await api.post("/auth/login/", { username: email, password });
   if (!res.data?.success) throw new Error(res.data?.message || "Login failed");
+  
+  if (res.data.data.requires_2fa) {
+    return res.data.data;
+  }
+  
   // Backend automatically attaches HttpOnly 'access_token' and 'refresh_token' cookies.
+  Cookies.set("user_role", res.data.data.role, { expires: 7 });
+  Cookies.set("user_data", JSON.stringify(res.data.data), { expires: 1 });
+  return res.data.data;
+};
+
+export const verify2FA = async (tempToken, code) => {
+  const res = await api.post("/auth/2fa/verify/", { temp_token: tempToken, code });
+  if (!res.data?.success) throw new Error(res.data?.message || "Verification failed");
+  
   Cookies.set("user_role", res.data.data.role, { expires: 7 });
   Cookies.set("user_data", JSON.stringify(res.data.data), { expires: 1 });
   return res.data.data;

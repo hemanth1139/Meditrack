@@ -24,6 +24,8 @@ class User(AbstractUser):
     profile_photo = SafeCloudinaryField("profile_photo", blank=True, null=True)
     hospital = models.ForeignKey(Hospital, null=True, blank=True, on_delete=models.SET_NULL, db_index=True)
     is_verified = models.BooleanField(default=False)
+    requires_password_change = models.BooleanField(default=False)
+    totp_secret = models.CharField(max_length=64, null=True, blank=True)
 
     # Doctor/Staff shared
     department = models.CharField(max_length=255, blank=True)

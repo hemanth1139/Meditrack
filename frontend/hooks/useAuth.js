@@ -20,6 +20,17 @@ export default function useAuth() {
     }
   }, []);
 
+  const verify2FA = useCallback(async (tempToken, code) => {
+    try {
+      const data = await auth.verify2FA(tempToken, code);
+      return data;
+    } catch (e) {
+      const msg = e?.response?.data?.message || "Verification failed.";
+      toast.error(msg);
+      throw e;
+    }
+  }, []);
+
   const logout = useCallback(() => auth.logout(), []);
 
   return {
@@ -27,6 +38,7 @@ export default function useAuth() {
     role,
     isAuthenticated: isAuthed,
     login,
+    verify2FA,
     logout,
   };
 }

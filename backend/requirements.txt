@@ -16,3 +16,5 @@ gunicorn
 whitenoise
 dj-database-url
 twilio==9.10.5
+
+pyotp==2.9.0

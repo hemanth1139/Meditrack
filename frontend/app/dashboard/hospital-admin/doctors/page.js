@@ -24,10 +24,12 @@ export default function HospitalAdminDoctorsPage() {
   
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [rejectTyped, setRejectTyped] = useState("");
   const [selected, setSelected] = useState(null);
   
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [deactivateReason, setDeactivateReason] = useState("");
+  const [deactivateTyped, setDeactivateTyped] = useState("");
   const [docToDeactivate, setDocToDeactivate] = useState(null);
 
   const load = useCallback(async () => {
@@ -52,6 +54,11 @@ export default function HospitalAdminDoctorsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (rejectOpen) setRejectTyped("");
+    if (deactivateOpen) setDeactivateTyped("");
+  }, [rejectOpen, deactivateOpen]);
 
   const approve = async (doc) => {
     try {
@@ -290,11 +297,23 @@ export default function HospitalAdminDoctorsPage() {
               placeholder="Explain why the doctor's application is not being approved..." 
             />
           </div>
+          <div className="flex flex-col gap-1.5 mt-2 pt-4 border-t border-gray-100">
+             <div className="bg-red-50 text-red-800 text-xs px-3 py-2 rounded-lg border border-red-100 mb-2">
+               This is a sensitive action. Please confirm.
+             </div>
+             <label className="text-sm font-semibold text-gray-700">Type <span className="font-extrabold select-all tracking-wider font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-900">REJECT</span> to confirm</label>
+             <Input 
+               value={rejectTyped}
+               onChange={(e) => setRejectTyped(e.target.value)}
+               placeholder="REJECT"
+               className="font-mono text-sm"
+             />
+          </div>
           <div className="flex justify-end gap-3 mt-4">
             <Button variant="outline" className="border-slate-200" onClick={() => setRejectOpen(false)}>
               Cancel
             </Button>
-            <Button className="bg-red-600 hover:bg-red-700 text-white border-0" onClick={reject} disabled={!rejectReason.trim()}>
+            <Button className="bg-red-600 hover:bg-red-700 text-white border-0" onClick={reject} disabled={!rejectReason.trim() || rejectTyped !== "REJECT"}>
               Confirm Rejection
             </Button>
           </div>
@@ -315,11 +334,23 @@ export default function HospitalAdminDoctorsPage() {
               className="resize-none min-h-[100px] border-slate-200 focus:ring-red-500 focus:border-red-500" 
             />
           </div>
+          <div className="flex flex-col gap-1.5 mt-2 pt-4 border-t border-gray-100">
+             <div className="bg-red-50 text-red-800 text-xs px-3 py-2 rounded-lg border border-red-100 mb-2">
+               This is a sensitive action. Please confirm.
+             </div>
+             <label className="text-sm font-semibold text-gray-700">Type <span className="font-extrabold select-all tracking-wider font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-900">DEACTIVATE</span> to confirm</label>
+             <Input 
+               value={deactivateTyped}
+               onChange={(e) => setDeactivateTyped(e.target.value)}
+               placeholder="DEACTIVATE"
+               className="font-mono text-sm"
+             />
+          </div>
           <div className="flex justify-end gap-3 mt-4">
             <Button variant="outline" className="border-slate-200" onClick={() => setDeactivateOpen(false)}>
               Cancel
             </Button>
-            <Button className="bg-red-600 hover:bg-red-700 text-white border-0" onClick={deactivate} disabled={!deactivateReason.trim()}>
+            <Button className="bg-red-600 hover:bg-red-700 text-white border-0" onClick={deactivate} disabled={!deactivateReason.trim() || deactivateTyped !== "DEACTIVATE"}>
               Deactivate Account
             </Button>
           </div>
