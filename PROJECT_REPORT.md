@@ -117,6 +117,12 @@ The frontend is built for speed and responsiveness, utilizing the latest React 1
 | **JS-Cookie** | Managed client-side session context (like user role) to facilitate role-based UI rendering. |
 | **NextJS TopLoader** | Improves perceived performance by providing a visual loading indicator during navigation. |
 
+#### 5.3 Auxiliary Services
+
+| Tool | Purpose in MediTrack |
+| :--- | :--- |
+| **Twilio API** | Dispatches SMS-based OTPs for Two-Factor Authentication during secure logins. |
+
 ---
 
 ### 6. System Architecture
@@ -179,8 +185,10 @@ The system enforces granular access control to ensure HIPAA-level data privacy:
 
 #### 9.1 Authentication & Authorization
 - Email/Username login with Brute-force protection (`django-axes`).
-- JWT logic using HttpOnly cookies to prevent token theft.
+- **Two-Factor Authentication (2FA):** SMS OTP delivery via Twilio with robust E.164 phone number normalization.
+- JWT logic using HttpOnly cookies to prevent token theft, seamlessly persisted across all auth steps including 2FA.
 - Role-specific dashboard redirection logic.
+- **Type-to-Confirm Safeguards:** Mandatory confirmation constraints for destructive administrative actions (e.g., deleting hospitals, rejecting doctors).
 
 #### 9.2 QR-Identity Management
 - Automatic 10-digit ID generation using a unique collision-resistant algorithm.
@@ -196,6 +204,11 @@ The system enforces granular access control to ensure HIPAA-level data privacy:
 - **Admin**: System-wide growth metrics.
 - **Doctor**: Patient load, monthly diagnosis breakdown, and pending queue.
 - **Patient**: Health trends (vitals history) and active treatment plans.
+
+#### 9.5 Data Integrity & Maintenance
+- **Systematic Cleanup**: Bundled Django management commands (e.g., `check_data_integrity.py`) to detect and purge corrupted user profiles, duplicate names, and missing patient identifiers.
+- **Deterministic Endpoints**: API list views are uniformly equipped with strict default `ordering` to ensure completely deterministic, stable UI renders on the frontend.
+- **Flexible Data Boundaries**: Intelligent handling of null or blank optional fields (such as `known_allergies`) to eliminate strict database constraint violations without losing data integrity.
 
 ---
 
@@ -245,6 +258,8 @@ The API is fully REST-compliant. Below are the primary endpoints:
 Security is the cornerstone of MediTrack. We implement a **Zero-Trust** inspired approach:
 
 - **HttpOnly JWT Auth**: Access and Refresh tokens are stored in `HttpOnly`, `Secure`, and `SameSite=None` cookies. This makes them inaccessible to JavaScript, effectively neutralizing XSS attacks.
+- **Two-Factor Authentication (2FA)**: High-privilege access and secure logins are backed by SMS OTPs via Twilio, ensuring compromised passwords alone are insufficient for unauthorized access.
+- **Administrative Constraints**: Critical dashboard actions (e.g., deactivating a user, deleting a hospital) require explicit "Type-to-Confirm" visual challenges to prevent accidental or malicious data modification.
 - **Silent Refresh**: A middleware intercepts 401 errors, uses the refresh token to get a new access token, and retries the original request without user interruption.
 - **Data Encryption**: Sensitive fields like `known_allergies` and `aadhaar_hash` are encrypted at the database level using `django-cryptography` (Fernet symmetric encryption).
 - **Brute Force Protection**: `django-axes` tracks login attempts per IP. After 5 failures, the IP is locked for 30 minutes.
@@ -287,8 +302,10 @@ frontend/
 ```
 
 **Key Logic**:
-- **Zod**: Used for client-side form validation before API submission.
+- **Client-First Component Migrations**: Core dashboard logic is built utilizing `use client` directives to solve complicated cross-domain cookie accessibility, ensuring stable session management in production deployments.
+- **Zod & Flexible State**: Robust client-side form validation, intentionally designed to gracefully handle optional parameters (preventing DB constraint crashes).
 - **TanStack Query**: Handles caching and optimistic UI updates for medical records.
+- **Async Route Parameters**: Built for Next.js 15 strict mode, ensuring that dynamic route mappings (like QR scanning endpoints) resolve their `params` asynchronously to eliminate 404 redirection bugs.
 
 ---
 
@@ -310,7 +327,7 @@ backend/
 
 **Key Logic**:
 - **Signals**: Django signals are used to automatically generate QR codes and 10-digit IDs upon user registration.
-- **Custom Permissions**: Every viewset is protected by a `BaseRolePermission` that checks the `request.user.role` field.
+- **Robust Custom Permissions**: Every viewset is protected by `BaseRolePermission`, which now seamlessly integrates automatic access fallbacks for root `is_superuser` accounts.
 
 ---
 
