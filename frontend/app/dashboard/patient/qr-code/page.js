@@ -58,7 +58,10 @@ export default function PatientQrCodePage() {
 
   const downloadPdf = async () => {
     if (!patient?.patient_id) return toast.error("Patient ID not available");
-    window.open(`http://localhost:8000/api/patients/${patient.patient_id}/export-pdf/`, "_blank");
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+    // We use the base API url but strip `/api` from the end to access the main site endpoints if necessary
+    // But since the url requires `/api/patients/...` we can just use NEXT_PUBLIC_API_URL.
+    window.open(`${apiBaseUrl}/patients/${patient.patient_id}/export-pdf/`, "_blank");
   };
 
   if (loading) {

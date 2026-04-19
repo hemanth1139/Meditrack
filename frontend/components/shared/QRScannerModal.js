@@ -25,7 +25,7 @@ export default function QRScannerModal({ isOpen, onClose, onScan }) {
     queryKey: ["patientLookup", lookupId],
     queryFn: async () => {
       const res = await api.get(`/patients/lookup/?patient_id=${lookupId}`);
-      return res.data;
+      return res.data?.data || res.data;
     },
     enabled: lookupId.length === 10,
     retry: false,

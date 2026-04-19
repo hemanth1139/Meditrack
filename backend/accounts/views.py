@@ -552,8 +552,15 @@ class LogoutView(generics.GenericAPIView):
             pass # Ignore invalid tokens during logout
             
         response = api_response(True, None, "Logged out")
-        response.delete_cookie(jwt_settings.get("AUTH_COOKIE", "access_token"))
-        response.delete_cookie(refresh_cookie_name)
+        cookie_name = jwt_settings.get("AUTH_COOKIE", "access_token")
+        cookie_refresh = jwt_settings.get("AUTH_COOKIE_REFRESH", "refresh_token")
+        cookie_samesite = jwt_settings.get("AUTH_COOKIE_SAMESITE", "Lax")
+        
+        # When unsetting cookies with SameSite=None, we must explicitly pass the 
+        # same samesite policy back, otherwise the browser will refuse to delete it.
+        response.delete_cookie(cookie_name, path="/", samesite=cookie_samesite)
+        response.delete_cookie(cookie_refresh, path="/", samesite=cookie_samesite)
+        
         return response
 
  

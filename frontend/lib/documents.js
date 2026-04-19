@@ -8,11 +8,7 @@ export async function uploadMedicalDocument(file, docType = "OTHER", label = "Do
   // but currently upload just handles the Cloudinary portion.
   // We attach it to return the full payload needed for the Record creation.
   
-  const res = await api.post("/records/documents/upload/", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  const res = await api.post("/records/documents/upload/", formData);
   
   if (res.data.success) {
     return {

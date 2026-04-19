@@ -32,7 +32,8 @@ export default function useRecords(params = {}) {
     onSuccess: (_, variables) => {
       toast.success("Record created");
       qc.invalidateQueries({ queryKey: ["records"] });
-      qc.invalidateQueries({ queryKey: ["analytics"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "doctor"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "staff"] });
       if (variables.patient_id) {
         qc.invalidateQueries({ queryKey: ["patientProfile", variables.patient_id] });
       }
@@ -48,7 +49,8 @@ export default function useRecords(params = {}) {
     onSuccess: () => {
       toast.success("Record approved");
       qc.invalidateQueries({ queryKey: ["records"] });
-      qc.invalidateQueries({ queryKey: ["analytics"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "doctor"] });
+      qc.invalidateQueries({ queryKey: ["patientProfile"] });
     },
     onError: handleError,
   });
@@ -61,7 +63,7 @@ export default function useRecords(params = {}) {
     onSuccess: () => {
       toast.success("Record rejected");
       qc.invalidateQueries({ queryKey: ["records"] });
-      qc.invalidateQueries({ queryKey: ["analytics"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "doctor"] });
     },
     onError: handleError,
   });
@@ -74,7 +76,7 @@ export default function useRecords(params = {}) {
     onSuccess: () => {
       toast.success("Record flagged");
       qc.invalidateQueries({ queryKey: ["records"] });
-      qc.invalidateQueries({ queryKey: ["analytics"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "doctor"] });
     },
     onError: handleError,
   });

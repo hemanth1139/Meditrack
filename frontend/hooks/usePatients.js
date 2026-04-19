@@ -60,6 +60,7 @@ export default function usePatients() {
     onSuccess: (_, variables) => {
       toast.success("Vitals added successfully");
       qc.invalidateQueries({ queryKey: ["patientProfile", variables.patientId] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "staff"] });
     },
     onError: handleError,
   });
@@ -73,6 +74,7 @@ export default function usePatients() {
       toast.success("Staff assigned successfully");
       qc.invalidateQueries({ queryKey: ["patients"] });
       qc.invalidateQueries({ queryKey: ["patientProfile", variables.patientId] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "doctor"] });
     },
     onError: handleError,
   });
@@ -99,6 +101,7 @@ export default function usePatients() {
       toast.success("Assignment completed! Doctor will review the record.");
       qc.invalidateQueries({ queryKey: ["staffDashboard"] });
       qc.invalidateQueries({ queryKey: ["patientProfile", variables.patientId] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "staff"] });
     },
     onError: handleError,
   });
