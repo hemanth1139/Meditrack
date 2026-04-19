@@ -31,7 +31,8 @@ export default function NotificationsBell() {
 
   const readMutation = useMutation({
     mutationFn: async (id) => {
-      await api.post(`/notifications/${id}/read/`);
+      // Backend only supports mark-all-as-read; mark all on individual click
+      await api.post("/notifications/read/");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications"] });
@@ -40,7 +41,7 @@ export default function NotificationsBell() {
 
   const readAllMutation = useMutation({
     mutationFn: async () => {
-      await api.post("/notifications/read-all/");
+      await api.post("/notifications/read/");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications"] });

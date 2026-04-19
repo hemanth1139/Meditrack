@@ -271,6 +271,12 @@ class LoginSerializer(TokenObtainPairSerializer):
 
         # Unified token generation
         role = user.role or ("ADMIN" if user.is_superuser else "USER")
+
+        # Block unapproved doctors from logging in
+        if role == "DOCTOR" and not user.is_verified:
+            raise AuthenticationFailed(
+                "Your account is pending admin approval. You will be notified once your account is approved."
+            )
         
         # Intercept for 2FA on Admin/Hospital Admin
         if role in ["ADMIN", "HOSPITAL_ADMIN"]:

@@ -90,7 +90,7 @@ export default function StaffDashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard icon={Users} label="Assigned Patients" value={data?.assigned_patients_count ?? 0} color="blue" />
         <StatCard icon={CheckCircle2} label="Completed Tasks" value={data?.completed_count ?? 0} color="green" />
         <StatCard icon={Activity} label="Vitals Recorded Today" value={data?.vitals_today ?? 0} color="amber" />
@@ -141,13 +141,13 @@ export default function StaffDashboardPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-auto">
                   <Link
-                    href={`/dashboard/staff/patients/${p.patient_id}`}
+                    href={`/dashboard/staff/patient/${p.patient_id}`}
                     className="flex items-center justify-center rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                   >
                     View
                   </Link>
                   <Link
-                    href={`/dashboard/staff/patients/${p.patient_id}?tab=vitals`}
+                    href={`/dashboard/staff/patient/${p.patient_id}?tab=vitals`}
                     className="flex items-center justify-center rounded-xl bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
                   >
                     Add Vitals

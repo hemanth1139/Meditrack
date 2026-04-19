@@ -152,6 +152,8 @@ class DoctorDashboardStatsView(views.APIView):
     def get(self, request, *args, **kwargs):
         if request.user.role != "DOCTOR":
             return api_response(False, None, "Permission denied")
+        if not request.user.is_verified:
+            return api_response(False, None, "Your account is pending admin approval.", status=403)
 
         cache_key = f"dashboard_doctor_{request.user.id}"
         cached = cache.get(cache_key)
@@ -173,8 +175,12 @@ class DoctorDashboardStatsView(views.APIView):
             created_at__month=now.month,
         ).count()
 
-        # Total staff in the hospital
-        assigned_staff = User.objects.filter(role="STAFF", hospital=doctor.hospital).count()
+        # Staff who have active access to this doctor's patients (via DoctorStaffAccess)
+        from patients.models import DoctorStaffAccess
+        assigned_staff = DoctorStaffAccess.objects.filter(
+            patient__records__created_by=doctor,
+            is_active=True,
+        ).values("staff").distinct().count()
 
         # Recent 5 unique patients with last record info
         recent_records_qs = (

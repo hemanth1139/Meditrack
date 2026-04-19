@@ -22,7 +22,7 @@ export default function AdminIntegrityPage() {
     if (!patientId) return toast.error("Enter Patient ID");
     try {
       setLoading(true);
-      const res = await api.get(`/integrity/verify/${patientId}/`);
+      const res = await api.get(`/records/integrity/verify/${patientId}/`);
       setResult(res.data.data);
     } catch (e) {
       toast.error("Verification failed");

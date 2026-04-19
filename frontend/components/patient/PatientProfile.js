@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import api from "@/lib/api";
 import { Card } from "@/components/ui/card";
@@ -30,9 +31,24 @@ export default function PatientProfile({ patientId: initialPatientId, role, init
   const [loadingProfile, setLoadingProfile] = useState(!initialData);
   const [profileError, setProfileError] = useState(false);
 
+  const searchParams = useSearchParams();
+
   const [assignStaffOpen, setAssignStaffOpen] = useState(false);
   const [addRecordOpen, setAddRecordOpen] = useState(false);
   const [addVitalsOpen, setAddVitalsOpen] = useState(false);
+
+  // Auto-switch tab and open vitals modal when ?tab=vitals is in the URL
+  useEffect(() => {
+    const tab = searchParams?.get("tab")?.toUpperCase();
+    if (tab === "VITALS") {
+      setActiveTab("VITALS");
+      if (role === "STAFF") {
+        setAddVitalsOpen(true);
+      }
+    } else if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, role]);
 
   useEffect(() => {
     if (initialData) return; // Already have data, skip fetching

@@ -15,7 +15,7 @@ export default function useAnalytics(type = "hospital") {
   const hospitalQuery = useQuery({
     queryKey: ["analytics", "hospital"],
     queryFn: async () => {
-      const res = await api.get("/analytics/hospital/");
+      const res = await api.get("/dashboard/hospital/");
       return res.data.data;
     },
     enabled: type === "hospital",
@@ -24,7 +24,7 @@ export default function useAnalytics(type = "hospital") {
   const doctorQuery = useQuery({
     queryKey: ["analytics", "doctor"],
     queryFn: async () => {
-      const res = await api.get("/analytics/doctor/");
+      const res = await api.get("/dashboard/doctor/");
       return res.data.data;
     },
     enabled: type === "doctor",
