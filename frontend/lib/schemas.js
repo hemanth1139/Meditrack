@@ -40,7 +40,7 @@ export const labSchema = z.object({
   suspected_diagnosis: z.string().optional(),
   tests_ordered: z.array(z.string()).min(1, "Select at least one test"),
   body_part: z.string().optional(),
-  priority: z.enum(["ROUTINE", "URGENT", "STAT"]),
+  priority: z.enum(["ROUTINE", "URGENT", "STAT"]).default("ROUTINE"),
   fasting_required: z.boolean().default(false),
   fasting_hours: z.coerce.number().optional(),
   special_instructions: z.string().optional(),
@@ -51,7 +51,7 @@ export const labSchema = z.object({
 
 export const procedureEmergencySchema = z.object({
   visit_type: z.literal("PROCEDURE_EMERGENCY"),
-  sub_type: z.enum(["PROCEDURE", "EMERGENCY"]),
+  sub_type: z.enum(["PROCEDURE", "EMERGENCY"]).optional(),
   
   // Procedure fields
   procedure_name: z.string().optional(),
@@ -75,6 +75,10 @@ export const procedureEmergencySchema = z.object({
   working_diagnosis: z.string().optional(),
   disposition: z.string().optional(),
   vitals: z.any().optional(),
+
+  // Emergency form aliases (remapped to chief_complaint / treatment_given before submission)
+  presenting_problem: z.string().optional(),
+  immediate_treatment: z.string().optional(),
 
   // Common
   doctor_notes: z.string().optional(),

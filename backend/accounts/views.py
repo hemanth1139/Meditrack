@@ -358,9 +358,22 @@ class SendOTPView(views.APIView):
 
         # Send OTP via SMS using Twilio
         from meditrack.utils import send_sms
-        message = f"Your MediTrack verification code is: {otp}. It will expire in 10 minutes."
-        success = send_sms(phone, message)
+        from django.conf import settings
+        import logging
+        logger = logging.getLogger(__name__)
+
+        sms_body = f"Your MediTrack verification code is: {otp}. It will expire in 10 minutes."
+        success = send_sms(phone, sms_body)
+
         if not success:
+            if settings.DEBUG:
+                # Twilio trial accounts can only SMS verified numbers.
+                # In dev mode: log OTP so registration can still be tested.
+                logger.warning(
+                    "[DEV] SMS failed for %s. OTP for manual testing: %s", phone, otp
+                )
+                return api_response(True, {"dev_otp": otp},
+                                    "SMS unavailable (dev mode). Use the OTP from the server console.")
             return api_response(False, None, "Failed to send SMS. Please try again later.", status=500)
 
         return api_response(True, None, "Verification code sent to " + phone)

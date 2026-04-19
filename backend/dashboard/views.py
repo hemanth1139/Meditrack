@@ -225,7 +225,19 @@ class StaffDashboardStatsView(views.APIView):
         staff = request.user
         now = timezone.now()
 
-        assigned_patients_count = Patient.objects.count()
+        from patients.models import DoctorStaffAccess
+
+        # Active assignments from doctors to this staff member
+        active_accesses = DoctorStaffAccess.objects.filter(
+            staff=staff, is_active=True
+        ).select_related("patient", "patient__user")
+
+        assigned_patients_count = active_accesses.count()
+
+        # Completed assignments (is_active=False means staff submitted, pending doctor approval)
+        completed_count = DoctorStaffAccess.objects.filter(
+            staff=staff, is_active=False
+        ).count()
 
         # Vitals recorded today by this staff
         vitals_today = Vitals.objects.filter(
@@ -233,26 +245,24 @@ class StaffDashboardStatsView(views.APIView):
             recorded_at__date=now.date(),
         ).count()
 
-        # Build patient cards based on recent vitals recorded by this staff
-        recent_vitals = Vitals.objects.filter(
-            recorded_by=staff
-        ).select_related("patient", "patient__user").order_by("-recorded_at")[:20]
-        
-        seen_pids = set()
+        # Build patient cards from active DoctorStaffAccess assignments
         patients = []
-        for v in recent_vitals:
-            patient = v.patient
-            if patient.patient_id not in seen_pids:
-                seen_pids.add(patient.patient_id)
-                patients.append({
-                    "patient_id": patient.patient_id,
-                    "name": patient.user.get_full_name() or patient.user.username,
-                    "blood_group": patient.blood_group,
-                    "last_vitals_date": v.recorded_at.strftime("%Y-%m-%d"),
-                })
+        for access in active_accesses:
+            patient = access.patient
+            last_vitals = Vitals.objects.filter(
+                patient=patient, recorded_by=staff
+            ).order_by("-recorded_at").first()
+            patients.append({
+                "patient_id": patient.patient_id,
+                "name": patient.user.get_full_name() or patient.user.username,
+                "blood_group": patient.blood_group,
+                "last_vitals_date": last_vitals.recorded_at.strftime("%Y-%m-%d") if last_vitals else None,
+                "access_id": access.id,
+            })
 
         data = {
             "assigned_patients_count": assigned_patients_count,
+            "completed_count": completed_count,
             "vitals_today": vitals_today,
             "hospital_name": staff.hospital.name if staff.hospital else "—",
             "patients": patients,

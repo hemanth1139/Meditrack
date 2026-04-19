@@ -82,7 +82,7 @@ export default function DoctorApprovalsPage() {
               {filtered.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.patient_id || "—"}</TableCell>
-                  <TableCell>{r.record_type}</TableCell>
+                  <TableCell>{(r.visit_type || "—").replace(/_/g, " ")}</TableCell>
                   <TableCell>{formatDate(r.visit_date)}</TableCell>
                   <TableCell>{formatDate(r.created_at)}</TableCell>
                   <TableCell className="text-right">
@@ -124,7 +124,7 @@ export default function DoctorApprovalsPage() {
                 <span className="font-medium text-slate-900">Patient ID:</span> {detail.patient_id}
               </div>
               <div>
-                <span className="font-medium text-slate-900">Type:</span> {detail.record_type}
+                <span className="font-medium text-slate-900">Type:</span> {(detail.visit_type || "—").replace(/_/g, " ")}
               </div>
               <div>
                 <span className="font-medium text-slate-900">Visit date:</span> {formatDate(detail.visit_date)}

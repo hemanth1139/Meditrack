@@ -57,6 +57,37 @@ def send_sms(phone: str, message: str) -> bool:
         logger.error(f"Failed to send SMS to {phone}: {e}")
         return False
 
+        # Strip +91 or leading zeros — Fast2SMS expects a plain 10-digit number
+        number = phone.strip()
+        if number.startswith("+91"):
+            number = number[3:]
+        elif number.startswith("91") and len(number) == 12:
+            number = number[2:]
+        elif number.startswith("0"):
+            number = number[1:]
+
+        response = requests.get(
+            "https://www.fast2sms.com/dev/bulkV2",
+            params={
+                "authorization": api_key,
+                "route": "otp",
+                "variables_values": otp,
+                "flash": "0",
+                "numbers": number,
+            },
+            timeout=10,
+        )
+        result = response.json()
+        if result.get("return") is True:
+            logger.info(f"OTP SMS sent to {number} via Fast2SMS.")
+            return True
+        else:
+            logger.error(f"Fast2SMS error for {number}: {result}")
+            return False
+    except Exception as e:
+        logger.error(f"Failed to send SMS to {phone}: {e}")
+        return False
+
 
 def dict_to_json(d: Dict[str, Any]) -> str:
     """Convert a dictionary to a compact JSON string."""

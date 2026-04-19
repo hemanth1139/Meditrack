@@ -74,14 +74,29 @@ export default function AddRecordModal({ isOpen, onClose, patientId }) {
   if (!isOpen) return null;
 
   const onSubmit = async (data) => {
-    const payload = { ...data, patient_id: patientId, documents };
-    
-    // Clean up empty fields
+    let payload = { ...data, patient_id: patientId, documents };
+
+    // Remap PROCEDURE_EMERGENCY fields to match backend model field names
+    if (payload.visit_type === "PROCEDURE_EMERGENCY") {
+      if (payload.presenting_problem) {
+        payload.chief_complaint = payload.presenting_problem;
+        delete payload.presenting_problem;
+      }
+      if (payload.immediate_treatment) {
+        payload.treatment_given = payload.immediate_treatment;
+        delete payload.immediate_treatment;
+      }
+    }
+
+    // Clean up empty strings and undefined — keep arrays (documents, prescriptions, tests_ordered)
     Object.keys(payload).forEach((key) => {
-      if (payload[key] === "" || payload[key] === undefined || (Array.isArray(payload[key]) && payload[key].length === 0)) {
-        if (key !== "prescriptions") delete payload[key];
+      if (payload[key] === "" || payload[key] === undefined) {
+        delete payload[key];
       }
     });
+
+    // Always send documents (even empty array) so the backend doesn't choke
+    payload.documents = documents;
 
     try {
       await createRecord(payload);

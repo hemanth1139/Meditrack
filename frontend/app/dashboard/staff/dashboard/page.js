@@ -1,39 +1,59 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import api from "@/lib/api";
+import usePatients from "@/hooks/usePatients";
 import StaffDashboardActions from "@/components/interactable/StaffDashboardActions";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { getGreeting, formatDate } from "@/lib/utils";
-import { Users, Activity, Building2 } from "lucide-react";
+import { Users, Activity, Building2, CheckCircle2, Loader2 } from "lucide-react";
 
 export default function StaffDashboardPage() {
   const [data, setData] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [completingId, setCompletingId] = useState(null);
+  const qc = useQueryClient();
+
+  const { completeAssignment, isCompletingAssignment } = usePatients();
+
+  const fetchData = async () => {
+    try {
+      const [res, meRes] = await Promise.all([
+        api.get("/dashboard/staff/stats/"),
+        api.get("/auth/me/"),
+      ]);
+      setData(res.data?.data || res.data);
+      setUser(meRes.data?.data || meRes.data);
+    } catch (err) {
+      setError("Failed to load dashboard. Please refresh.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [res, meRes] = await Promise.all([
-          api.get("/dashboard/staff/stats/"),
-          api.get("/auth/me/"),
-        ]);
-        setData(res.data?.data || res.data);
-        setUser(meRes.data?.data || meRes.data);
-      } catch (err) {
-        setError("Failed to load dashboard. Please refresh.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
+
+  const handleCompleteAssignment = async (patientId) => {
+    setCompletingId(patientId);
+    try {
+      await completeAssignment({ patientId });
+      // Refresh dashboard data after completing
+      await fetchData();
+    } catch (err) {
+      // error toast is handled in hook
+    } finally {
+      setCompletingId(null);
+    }
+  };
 
   const firstName = user?.first_name || user?.username || "Staff";
   const today = new Date().toISOString();
@@ -70,10 +90,11 @@ export default function StaffDashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <StatCard icon={Users} label="Assigned Patients" value={data?.assigned_patients_count} color="blue" />
-        <StatCard icon={Activity} label="Vitals Recorded Today" value={data?.vitals_today} color="green" />
-        <StatCard icon={Building2} label="My Hospital" value={data?.hospital_name} color="amber" />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <StatCard icon={Users} label="Assigned Patients" value={data?.assigned_patients_count ?? 0} color="blue" />
+        <StatCard icon={CheckCircle2} label="Completed Tasks" value={data?.completed_count ?? 0} color="green" />
+        <StatCard icon={Activity} label="Vitals Recorded Today" value={data?.vitals_today ?? 0} color="amber" />
+        <StatCard icon={Building2} label="My Hospital" value={data?.hospital_name} color="purple" />
       </div>
 
       {/* Quick Actions */}
@@ -85,19 +106,25 @@ export default function StaffDashboardPage() {
       {/* Assigned Patients */}
       <Card className="overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-800">My Assigned Patients</h2>
+          <div>
+            <h2 className="text-base font-semibold text-gray-800">My Assigned Patients</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Patients that doctors have assigned to you for care</p>
+          </div>
+          {(data?.assigned_patients_count ?? 0) > 0 && (
+            <Badge variant="blue">{data.assigned_patients_count} pending</Badge>
+          )}
         </div>
 
         {!data?.patients?.length ? (
           <div className="text-center py-12 text-gray-400">
             <Users className="w-12 h-12 mx-auto text-gray-200 mb-3" />
-            <p className="text-sm font-medium">No patients assigned yet</p>
-            <p className="text-xs mt-1">Ask a doctor to assign you to a patient</p>
+            <p className="text-sm font-medium">No patients currently assigned</p>
+            <p className="text-xs mt-1">A doctor will assign patients to you when needed</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6 bg-gray-50">
             {data.patients.map((p) => (
-              <Card key={p.patient_id} variant="hoverable" className="p-5 flex flex-col gap-4">
+              <Card key={p.patient_id} variant="hoverable" className="p-5 flex flex-col gap-4 bg-white border border-blue-100">
                 <div className="flex gap-4">
                   <Avatar name={p.name || "Patient"} size="md" />
                   <div className="min-w-0 flex-1">
@@ -108,8 +135,8 @@ export default function StaffDashboardPage() {
                     </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
-                  <p className="text-xs font-medium text-gray-500 mb-1">Last Vitals</p>
+                <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-100">
+                  <p className="text-xs font-medium text-blue-600 mb-1">Last Vitals</p>
                   <p className="text-sm font-semibold text-gray-800">{p.last_vitals_date || "Not recorded yet"}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-auto">
@@ -125,6 +152,23 @@ export default function StaffDashboardPage() {
                   >
                     Add Vitals
                   </Link>
+                  <button
+                    onClick={() => handleCompleteAssignment(p.patient_id)}
+                    disabled={completingId === p.patient_id}
+                    className="col-span-2 flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                  >
+                    {completingId === p.patient_id ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        Completing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={12} />
+                        Mark as Done (Submit to Doctor)
+                      </>
+                    )}
+                  </button>
                 </div>
               </Card>
             ))}

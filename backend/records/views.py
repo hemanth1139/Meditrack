@@ -37,6 +37,9 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         qs = self.get_queryset()
         if user.role == "PATIENT":
             qs = qs.filter(patient__user=user, status=MedicalRecord.Status.APPROVED)
+        elif user.role in ["DOCTOR", "STAFF"] and user.hospital:
+            # Scope to own hospital's records only
+            qs = qs.filter(hospital=user.hospital)
             
         qs = qs.order_by("-visit_date")
         

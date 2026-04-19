@@ -235,6 +235,37 @@ class PatientViewSet(viewsets.ModelViewSet):
         )
         return api_response(True, None, "Staff assigned successfully")
 
+    @action(detail=True, methods=["post"], url_path="complete-assignment")
+    def complete_assignment(self, request, pk=None):
+        """
+        Called by staff after they have entered the required details for a patient.
+        Marks the DoctorStaffAccess as inactive (completed), removing it from the
+        staff member's active assignment list and signalling the doctor for approval.
+        """
+        patient = self.get_object()
+        user = request.user
+        if user.role != "STAFF":
+            return api_response(False, None, "Only staff can complete assignments")
+
+        from .models import DoctorStaffAccess
+        try:
+            access = DoctorStaffAccess.objects.get(staff=user, patient=patient, is_active=True)
+        except DoctorStaffAccess.DoesNotExist:
+            return api_response(False, None, "No active assignment found for this patient")
+
+        access.is_active = False
+        access.save()
+
+        AuditLog.objects.create(
+            user=user,
+            action="ASSIGNMENT_COMPLETED",
+            target_model="DoctorStaffAccess",
+            target_id=str(access.id),
+            description=f"Staff {user.username} completed assignment for patient {patient.patient_id}",
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+        return api_response(True, None, "Assignment marked as completed. Doctor will review the record.")
+
     @action(detail=True, methods=["get"], url_path="qr")
     def qr(self, request, pk=None):
         patient = self.get_object()

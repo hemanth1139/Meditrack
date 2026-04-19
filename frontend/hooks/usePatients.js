@@ -90,6 +90,19 @@ export default function usePatients() {
     onError: handleError,
   });
 
+  const completeAssignmentMutation = useMutation({
+    mutationFn: async ({ patientId }) => {
+      const res = await api.post(`/patients/${patientId}/complete-assignment/`);
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      toast.success("Assignment completed! Doctor will review the record.");
+      qc.invalidateQueries({ queryKey: ["staffDashboard"] });
+      qc.invalidateQueries({ queryKey: ["patientProfile", variables.patientId] });
+    },
+    onError: handleError,
+  });
+
   return {
     patients: patientsQuery.data || [],
     isLoading: patientsQuery.isLoading,
@@ -101,6 +114,8 @@ export default function usePatients() {
     addVitals: addVitalsMutation.mutateAsync,
     assignStaff: assignStaffMutation.mutateAsync,
     isAssigningStaff: assignStaffMutation.isPending,
+    completeAssignment: completeAssignmentMutation.mutateAsync,
+    isCompletingAssignment: completeAssignmentMutation.isPending,
     completeProfile: completeProfileMutation.mutateAsync,
     isCompletingProfile: completeProfileMutation.isPending,
   };

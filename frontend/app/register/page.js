@@ -198,8 +198,8 @@ export default function RegisterPage() {
   const onSubmitPatient = async (values) => {
     setPatientSubmitting(true);
     try {
-      // Step 1: Request OTP via email
-      await api.post("/auth/send-otp/", { phone: values.phone, email: values.email });
+      // Step 1: Request OTP via SMS
+      const res = await api.post("/auth/send-otp/", { phone: values.phone, email: values.email });
       setPatientData({
         username: values.email.split("@")[0] || `user${Date.now()}`,
         password: values.password, email: values.email,
@@ -211,7 +211,15 @@ export default function RegisterPage() {
         emergency_contact_phone: values.emergencyContactPhone || null,
       });
       setShowOtp(true);
-      toast.success("Verification code sent to your email!");
+
+      // Dev mode: backend returns OTP directly when SMS is unavailable (Twilio trial)
+      const devOtp = res?.data?.data?.dev_otp;
+      if (devOtp) {
+        setOtpValue(String(devOtp));
+        toast("⚠️ Dev mode: OTP auto-filled from server (" + devOtp + ")", { duration: 8000, icon: "🔑" });
+      } else {
+        toast.success("Verification code sent to your phone!");
+      }
     } catch (error) {
       const msg = error?.response?.data?.message || "Failed to send OTP";
       toast.error(msg);

@@ -268,7 +268,13 @@ export default function PatientProfile({ patientId: initialPatientId, role, init
                           </div>
                           <div className="min-w-0">
                             <h3 className="font-extrabold text-gray-900 text-base truncate tracking-tight">{record.visit_type.replace("_", " ")}</h3>
-                            <p className="text-xs font-bold text-gray-500 truncate mt-0.5">{record.diagnosis || record.chief_complaint || "Routine check"}</p>
+                            <p className="text-xs font-bold text-gray-500 truncate mt-0.5">
+                              {record.visit_type === "LAB_DIAGNOSTICS"
+                                ? (record.priority === "URGENT" ? "⚡ Urgent" : record.priority === "STAT" ? "🚨 STAT" : record.priority === "ROUTINE" ? "Routine check" : record.clinical_indication || "Lab & Diagnostics")
+                                : record.visit_type === "PROCEDURE_EMERGENCY"
+                                ? (record.procedure_name || (record.sub_type === "EMERGENCY" ? "Emergency Visit" : "Planned Procedure"))
+                                : (record.diagnosis || record.chief_complaint || "—")}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-6 pl-4 sm:pl-0 shrink-0">
