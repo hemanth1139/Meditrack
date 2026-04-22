@@ -37,7 +37,6 @@ export default function PatientProfile({ patientId: initialPatientId, role, init
 
   const [assignStaffOpen, setAssignStaffOpen] = useState(false);
   const [addRecordOpen, setAddRecordOpen] = useState(false);
-  const [addRecordOpen, setAddRecordOpen] = useState(false);
   const [addVitalsOpen, setAddVitalsOpen] = useState(false);
 
   // Integrity Ledger State
