@@ -74,20 +74,132 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         return api_response(True, serializer.data, "Logs fetched")
 
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for listing and retrieving users.
-    Admin can list all; users can retrieve own details.
+    ViewSet for listing, retrieving, and creating users.
+    Admin can list/create all; users can retrieve own details.
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ["first_name", "last_name", "email", "phone"]
 
+    http_method_names = ["get", "post", "head", "options"]  # no PUT/PATCH/DELETE
+
     def get_permissions(self):
-        if self.action == "list":
-            return [IsAuthenticated()]
         return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        """Admin creates a HOSPITAL_ADMIN or DOCTOR account directly."""
+        if request.user.role != "ADMIN":
+            return api_response(False, None, "Only Super Admin can create users this way", status=403)
+
+        data = request.data
+        role = data.get("role", "").strip().upper()
+        allowed_roles = ["HOSPITAL_ADMIN", "DOCTOR", "STAFF"]
+        if role not in allowed_roles:
+            return api_response(False, None, f"Role must be one of: {', '.join(allowed_roles)}", status=400)
+
+        email = data.get("email", "").strip()
+        first_name = data.get("first_name", "").strip()
+        last_name = data.get("last_name", "").strip()
+        phone = data.get("phone", "").strip()
+        password = data.get("password", "").strip()
+        hospital_id = data.get("hospital_id")
+
+        if not email:
+            return api_response(False, None, "Email is required", status=400)
+        if not password:
+            return api_response(False, None, "Password is required", status=400)
+
+        if User.objects.filter(email__iexact=email).exists():
+            return api_response(False, None, "A user with this email already exists", status=400)
+
+        # Username: prefer explicit, else derive from email
+        username = data.get("username", "").strip() or email.split("@")[0]
+        base = username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base}{counter}"
+            counter += 1
+
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            validate_password(password)
+        except DjangoValidationError as e:
+            return api_response(False, None, " ".join(e.messages), status=400)
+
+        hospital = None
+        if hospital_id:
+            from hospitals.models import Hospital
+            try:
+                hospital = Hospital.objects.get(id=hospital_id)
+            except Hospital.DoesNotExist:
+                return api_response(False, None, "Hospital not found", status=400)
+
+        # Role-specific fields
+        specialization = data.get("specialization", "").strip()
+        qualification = data.get("qualification", "").strip()
+        department = data.get("department", "").strip()
+        medical_reg_number = data.get("medical_reg_number", "").strip() or None
+        medical_council = data.get("medical_council", "").strip()
+        years_of_experience = data.get("years_of_experience")
+        role_title = data.get("role_title", "").strip()
+
+        if medical_reg_number and User.objects.filter(medical_reg_number=medical_reg_number).exists():
+            return api_response(False, None, "A doctor with this registration number already exists", status=400)
+
+        new_user = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            role=role,
+            hospital=hospital,
+            created_by=request.user,
+            is_active=True,
+            requires_password_change=True,
+            # Doctor fields
+            specialization=specialization,
+            qualification=qualification,
+            department=department,
+            medical_reg_number=medical_reg_number,
+            medical_council=medical_council,
+            years_of_experience=int(years_of_experience) if years_of_experience else None,
+            # Staff field
+            role_title=role_title,
+        )
+
+        if role == "HOSPITAL_ADMIN":
+            new_user.is_verified = True
+            new_user.status = User.DoctorStatus.APPROVED
+
+        elif role == "DOCTOR":
+            # Admin-created doctors are auto-approved (Admin vouches for them)
+            new_user.is_verified = True
+            new_user.status = User.DoctorStatus.APPROVED
+
+        elif role == "STAFF":
+            new_user.is_verified = True
+
+        new_user.set_password(password)
+        new_user.save()
+
+        AuditLog.objects.create(
+            user=request.user,
+            action="USER_CREATED",
+            target_model="User",
+            target_id=str(new_user.id),
+            description=(
+                f"Admin created {role} account for {email} "
+                f"(hospital: {hospital.name if hospital else 'N/A'})"
+            ),
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+
+        return api_response(True, self.get_serializer(new_user).data, f"{role} account created successfully")
 
     def list(self, request, *args, **kwargs):
         qs = self.get_queryset()
@@ -317,6 +429,125 @@ class DoctorAdminViewSet(viewsets.ModelViewSet):
             ip_address=request.META.get("REMOTE_ADDR"),
         )
         return api_response(True, None, "Doctor rejected")
+
+    @action(detail=False, methods=["post"], url_path="create-doctor")
+    def create_doctor(self, request):
+        """
+        Hospital Admin (or Super Admin) directly creates a doctor.
+        The doctor is auto-approved instantly and must change password on first login.
+        Certificate upload is mandatory.
+        """
+        if request.user.role not in ["ADMIN", "HOSPITAL_ADMIN"]:
+            return api_response(False, None, "Permission denied", status=403)
+
+        data = request.data
+        certificate_file = request.FILES.get("certificate")
+        if not certificate_file:
+            return api_response(False, None, "Medical certificate is required", status=400)
+
+        # Required fields
+        email = data.get("email", "").strip()
+        first_name = data.get("first_name", "").strip()
+        last_name = data.get("last_name", "").strip()
+        phone = data.get("phone", "").strip()
+        specialization = data.get("specialization", "").strip()
+        qualification = data.get("qualification", "").strip()
+        department = data.get("department", "").strip()
+        medical_reg_number = data.get("medical_reg_number", "").strip()
+        medical_council = data.get("medical_council", "").strip()
+        years_of_experience = data.get("years_of_experience")
+        password = data.get("password", "").strip()
+
+        missing = [f for f, v in [
+            ("email", email), ("first_name", first_name), ("specialization", specialization),
+            ("qualification", qualification), ("department", department),
+            ("medical_reg_number", medical_reg_number), ("medical_council", medical_council),
+        ] if not v]
+        if missing:
+            return api_response(False, None, f"Missing required fields: {', '.join(missing)}", status=400)
+
+        if User.objects.filter(email__iexact=email).exists():
+            return api_response(False, None, "A user with this email already exists", status=400)
+
+        if medical_reg_number and User.objects.filter(medical_reg_number=medical_reg_number).exists():
+            return api_response(False, None, "A doctor with this registration number already exists", status=400)
+
+        # Unique username from email prefix
+        base_username = email.split("@")[0]
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        # Use a temporary password if none provided; doctor MUST change it on first login
+        from django.utils.crypto import get_random_string
+        temp_password = password or get_random_string(12)
+
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            validate_password(temp_password)
+        except DjangoValidationError as e:
+            return api_response(False, None, " ".join(e.messages), status=400)
+
+        hospital = request.user.hospital if request.user.role == "HOSPITAL_ADMIN" else None
+        hospital_id = data.get("hospital_id")
+        if request.user.role == "ADMIN" and hospital_id:
+            from hospitals.models import Hospital
+            try:
+                hospital = Hospital.objects.get(id=hospital_id)
+            except Hospital.DoesNotExist:
+                return api_response(False, None, "Hospital not found", status=400)
+
+        doctor = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            role=User.Roles.DOCTOR,
+            hospital=hospital,
+            specialization=specialization,
+            qualification=qualification,
+            department=department,
+            medical_reg_number=medical_reg_number or None,
+            medical_council=medical_council,
+            years_of_experience=int(years_of_experience) if years_of_experience else None,
+            created_by=request.user,
+            is_verified=True,
+            status=User.DoctorStatus.APPROVED,
+            is_active=True,
+            requires_password_change=True,
+        )
+        doctor.set_password(temp_password)
+        doctor.save()
+
+        # Upload certificate
+        from .serializers import _upload_certificate
+        _upload_certificate(doctor, certificate_file)
+
+        AuditLog.objects.create(
+            user=request.user,
+            action="DOCTOR_CREATED",
+            target_model="User",
+            target_id=str(doctor.id),
+            description=(
+                f"Doctor {email} created directly by {request.user.role} "
+                f"{request.user.email} for hospital "
+                f"{hospital.name if hospital else 'N/A'}"
+            ),
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+
+        return api_response(
+            True,
+            {
+                **self.get_serializer(doctor).data,
+                "temp_password": temp_password,  # Return so admin can share with doctor
+            },
+            "Doctor created successfully",
+        )
 
 
 class SendOTPView(views.APIView):

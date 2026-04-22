@@ -45,7 +45,7 @@ export default function CloudinaryUpload({
       if (onUploadSuccess) onUploadSuccess(newDocs);
       
     } catch (err) {
-      setError("An error occurred during upload. Please try again.");
+      setError(err.message || "An error occurred during upload. Please try again.");
     } finally {
       setIsUploading(false);
       // Reset input

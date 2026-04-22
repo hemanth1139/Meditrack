@@ -233,13 +233,8 @@ class MedicalDocumentViewSet(viewsets.ModelViewSet):
             return api_response(False, None, "No file provided")
             
         try:
-            # Use 'raw' for PDFs so Cloudinary serves them as downloadable files (/raw/upload/ URL)
-            # Use 'image' for actual images so transformations work
-            content_type = file.content_type or ""
-            is_pdf = content_type == "application/pdf" or file.name.lower().endswith(".pdf")
-            resource_type = "raw" if is_pdf else "image"
-            
-            upload_data = cloudinary.uploader.upload(file, resource_type=resource_type)
+            # Let Cloudinary automatically determine if it's an image, pdf, or raw file type
+            upload_data = cloudinary.uploader.upload(file, resource_type="auto")
             return api_response(True, {
                 "cloudinary_url": upload_data.get("secure_url"),
                 "cloudinary_public_id": upload_data.get("public_id"),

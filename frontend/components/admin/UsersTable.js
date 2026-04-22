@@ -10,7 +10,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Search, Plus, Edit2, MoreVertical, QrCode, Power, Eye } from "lucide-react";
+import { Search, Plus, Edit2, MoreVertical, QrCode, Power, Eye, Building2 } from "lucide-react";
 import api from "@/lib/api";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import PatientQRActions from "@/components/interactable/PatientQRActions";
@@ -41,7 +41,8 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
   const [qrOpen, setQrOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [deactivateConfirm, setDeactivateConfirm] = useState({ open: false, user: null, loading: false });
-
+  const [reassigning, setReassigning] = useState(null);
+  const [reassignHospital, setReassignHospital] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -90,10 +91,10 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
       toast.success("User created");
       setOpen(false);
       load();
-    } catch {
-      toast.error("Save failed");
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Save failed";
+      toast.error(msg);
     }
-
   };
 
   const toggleStatus = async (user) => {
@@ -105,6 +106,17 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
       }
     } catch (err) {
       toast.error("Failed to toggle status");
+    }
+  };
+
+  const submitReassign = async () => {
+    try {
+      await api.put(`/users/${reassigning.id}/`, { hospital_id: reassignHospital || null });
+      toast.success("User successfully reassigned to new hospital!");
+      setReassigning(null);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to reassign hospital");
     }
   };
 
@@ -232,7 +244,7 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
 
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {u.role?.toUpperCase() === "PATIENT" && (
+                           {u.role?.toUpperCase() === "PATIENT" && (
                              <Button 
                               variant="ghost" 
                               size="icon" 
@@ -242,6 +254,18 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
                              >
                                <QrCode className="w-4 h-4" />
                              </Button>
+                          )}
+
+                          {["DOCTOR", "STAFF", "HOSPITAL_ADMIN"].includes(u.role?.toUpperCase()) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-8 h-8 rounded-full text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                              onClick={() => { setReassigning(u); setReassignHospital(u.hospital_id || ""); }}
+                              title="Transfer to another Hospital"
+                            >
+                              <Building2 className="w-4 h-4" />
+                            </Button>
                           )}
 
                           <Button 
@@ -340,6 +364,33 @@ export default function UsersTable({ initialUsers = [], initialHospitals = [] })
             Close Card
           </Button>
         </div>
+      </Modal>
+
+      <Modal 
+        isOpen={!!reassigning} 
+        onClose={() => setReassigning(null)} 
+        title="Transfer Hospital Assignment"
+        footer={
+          <>
+             <Button variant="ghost" onClick={() => setReassigning(null)}>Cancel</Button>
+             <Button onClick={submitReassign}>Save Transfer</Button>
+          </>
+        }
+      >
+         <div className="space-y-4 py-2">
+            <p className="text-sm text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-100 italic">
+               Select exactly which hospital <strong>{reassigning?.first_name || reassigning?.username}</strong> should be securely transferred to. All past medical records they created will permanently remain mapped to their original hospital setting.
+            </p>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">New Assignment</label>
+              <select className="w-full rounded-xl border border-gray-200 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white" value={reassignHospital} onChange={e => setReassignHospital(e.target.value)}>
+                 <option value="">-- None (Unassigned) --</option>
+                 {hospitals.map(h => (
+                    <option key={h.id} value={h.id}>{h.name}</option>
+                 ))}
+              </select>
+            </div>
+         </div>
       </Modal>
 
       <ConfirmModal

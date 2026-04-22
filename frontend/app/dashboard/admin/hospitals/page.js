@@ -13,6 +13,7 @@ import { Building2, Plus, Edit2, Trash2 } from "lucide-react";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import CloudinaryUpload from "@/components/shared/CloudinaryUpload";
 
 export default function AdminHospitalsPage() {
   const [items, setItems] = useState([]);
@@ -29,8 +30,13 @@ export default function AdminHospitalsPage() {
     admin_first_name: "",
     admin_last_name: "",
     admin_email: "",
+    admin_email: "",
     admin_password: "",
     admin_phone: "",
+    registration_number: "",
+    hospital_type: "General",
+    website: "",
+    verification_document: "",
   });
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, hospital: null, loading: false });
 
@@ -52,7 +58,7 @@ export default function AdminHospitalsPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ name: "", address: "", city: "", state: "", phone: "", email: "", admin_first_name: "", admin_last_name: "", admin_email: "", admin_password: "", admin_phone: "" });
+    setForm({ name: "", address: "", city: "", state: "", phone: "", email: "", admin_first_name: "", admin_last_name: "", admin_email: "", admin_password: "", admin_phone: "", registration_number: "", hospital_type: "General", website: "", verification_document: "" });
     setOpen(true);
   };
 
@@ -70,23 +76,40 @@ export default function AdminHospitalsPage() {
       admin_email: "",
       admin_password: "",
       admin_phone: "",
+      registration_number: h.registration_number || "",
+      hospital_type: h.hospital_type || "General",
+      website: h.website || "",
+      verification_document: h.verification_document || "",
     });
     setOpen(true);
   };
 
   const save = async () => {
     try {
+      if (!editing && !form.verification_document) {
+        toast.error("You must upload an Official Registration Certificate to create a hospital.");
+        return;
+      }
+      
+      const payload = {
+        name: form.name,
+        address: form.address,
+        city: form.city,
+        state: form.state,
+        phone: form.phone,
+        email: form.email,
+        registration_number: form.registration_number,
+        hospital_type: form.hospital_type,
+        website: form.website,
+        verification_document: form.verification_document,
+      };
+
       if (editing) {
-        await api.put(`/hospitals/${editing.id}/`, form);
+        await api.put(`/hospitals/${editing.id}/`, payload);
         toast.success("Hospital updated");
       } else {
         await api.post("/hospitals/", {
-          name: form.name,
-          address: form.address,
-          city: form.city,
-          state: form.state,
-          phone: form.phone,
-          email: form.email,
+          ...payload,
           hospital_admin: {
             first_name: form.admin_first_name,
             last_name: form.admin_last_name,
@@ -162,6 +185,10 @@ export default function AdminHospitalsPage() {
                 <p className="text-sm text-gray-500 mb-4 flex items-center gap-1.5 line-clamp-1">
                   {h.city}{h.state ? `, ${h.state}` : ""}
                 </p>
+                <div className="flex gap-2 mb-4">
+                  <Badge variant="blue" className="px-2 py-0.5 text-[10px] uppercase font-black tracking-widest">{h.hospital_type}</Badge>
+                  {h.registration_number && <Badge variant="gray" className="px-2 py-0.5 text-[10px] font-bold">Reg: {h.registration_number}</Badge>}
+                </div>
  
                 <div className="text-xs font-medium text-gray-400 bg-gray-50 rounded-lg p-2.5 mb-6">
                    Added: {h.created_at ? new Date(h.created_at).toLocaleDateString() : "—"}
@@ -206,7 +233,43 @@ export default function AdminHospitalsPage() {
               <Input label="State" value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))} />
               <Input label="Phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
               <Input label="Email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+              <div className="col-span-2">
+                <Input label="Official Website" value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} />
+              </div>
             </div>
+          </div>
+          
+          <div>
+             <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-2 border-b border-gray-100 pb-2">Verification Credentials</h3>
+             <p className="text-xs text-gray-500 mb-4">Official licensing details to verify the hospital&apos;s legitimacy.</p>
+             <div className="grid grid-cols-2 gap-4 mb-4">
+                <Input label="Registration / License No. *" value={form.registration_number} onChange={(e) => setForm((f) => ({ ...f, registration_number: e.target.value }))} />
+                <div>
+                   <label className="mb-1 block text-sm font-semibold text-gray-700">Hospital Type</label>
+                   <select className="w-full rounded-xl border border-gray-200 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white" value={form.hospital_type} onChange={(e) => setForm({...form, hospital_type: e.target.value})}>
+                      <option value="General">General Hospital</option>
+                      <option value="Clinic">Clinic</option>
+                      <option value="Multi-Specialty">Multi-Specialty</option>
+                      <option value="Emergency">Emergency / Trauma Center</option>
+                      <option value="Research">Research Institute</option>
+                      <option value="Other">Other</option>
+                   </select>
+                </div>
+             </div>
+             
+             <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+               <CloudinaryUpload 
+                 label="Official Registration Certificate *"
+                 docType="OTHER"
+                 maxFiles={1}
+                 uploadedFiles={form.verification_document ? [{ label: "Registration_Certificate.pdf", file_type: "pdf" }] : []}
+                 onUploadSuccess={(docs) => {
+                   if (docs.length > 0) setForm(f => ({ ...f, verification_document: docs[0].cloudinary_url }))
+                 }}
+                 onRemoveFile={() => setForm(f => ({ ...f, verification_document: "" }))}
+               />
+               <p className="text-xs text-gray-500 mt-2 text-center">Mandatory. Please upload the verified medical council registration certificate.</p>
+             </div>
           </div>
  
           {!editing && (

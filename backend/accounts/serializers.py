@@ -28,6 +28,8 @@ class RegisterSerializer(serializers.Serializer):
     medical_reg_number = serializers.CharField(required=False, allow_blank=True)
     medical_council = serializers.CharField(required=False, allow_blank=True)
     years_of_experience = serializers.IntegerField(required=False)
+    # Doctor certificate — optional for backward-compat but strongly enforced on frontend
+    certificate = serializers.FileField(required=False, allow_null=True)
     # patient profile fields (required when role=PATIENT)
     date_of_birth = serializers.DateField(required=False)
     gender = serializers.CharField(required=False)
@@ -63,6 +65,7 @@ class RegisterSerializer(serializers.Serializer):
     def create(self, validated_data):
         hospital_id = validated_data.pop("hospital_id", None)
         role = validated_data.pop("role")
+        certificate_file = validated_data.pop("certificate", None)
 
         doctor_fields = [
             "specialization",
@@ -109,7 +112,9 @@ class RegisterSerializer(serializers.Serializer):
             user.is_verified = True
         user.save()
         if role == User.Roles.DOCTOR:
-            pass  # Fields are automatically created on User now
+            # Upload certificate to Cloudinary if provided
+            if certificate_file:
+                _upload_certificate(user, certificate_file)
         if role == User.Roles.PATIENT:
             gender_map = {"Male": "M", "Female": "F", "Other": "O", "M": "M", "F": "F", "O": "O"}
             g = patient_data.get("gender")
@@ -169,6 +174,28 @@ class RegisterSerializer(serializers.Serializer):
 
 
 
+def _upload_certificate(user, file_obj):
+    """Upload a doctor's certificate file to Cloudinary (or save locally in dev mode)."""
+    from django.conf import settings
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        if getattr(settings, "CLOUDINARY_ENABLED", False):
+            import cloudinary.uploader
+            result = cloudinary.uploader.upload(
+                file_obj,
+                public_id=f"meditrack/certificates/doctor_{user.id}",
+                resource_type="auto",
+                overwrite=True,
+            )
+            user.certificate = result.get("secure_url") or result.get("url")
+        else:
+            user.certificate = file_obj  # local ImageField fallback
+        user.save(update_fields=["certificate"])
+    except Exception as e:
+        logger.warning(f"Certificate upload failed for user {user.id}: {e}")
+
+
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for listing and updating users."""
 
@@ -176,8 +203,7 @@ class UserSerializer(serializers.ModelSerializer):
     hospital_name = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
     patient_id = serializers.SerializerMethodField()
-
-
+    certificate_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -195,15 +221,18 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "is_active",
             "department",
-
             "created_at",
             "specialization",
+            "qualification",
             "medical_reg_number",
+            "medical_council",
+            "years_of_experience",
+            "certificate_url",
+            "rejection_reason",
             "patient_id",
             "status",
             "requires_password_change",
         )
-
 
         read_only_fields = ("id", "role", "is_verified", "status")
 
@@ -223,6 +252,20 @@ class UserSerializer(serializers.ModelSerializer):
             except:
                 return None
         return None
+
+    def get_certificate_url(self, obj):
+        """Return the certificate as a plain URL string regardless of storage backend."""
+        cert = getattr(obj, "certificate", None)
+        if not cert:
+            return None
+        # Cloudinary stores a URL string directly after our _upload_certificate helper
+        if isinstance(cert, str):
+            return cert
+        # Django ImageField / CloudinaryField — attempt .url
+        try:
+            return cert.url
+        except Exception:
+            return str(cert) or None
 
 
 
