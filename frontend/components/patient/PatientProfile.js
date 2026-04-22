@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Activity, FileText, Pill, AlertTriangle, Phone, Calendar, UserPlus, Info, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
+import { Activity, FileText, Pill, AlertTriangle, Phone, Calendar, UserPlus, Info, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
+import toast from "react-hot-toast";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { formatDate } from "@/lib/utils";
 import AssignStaffModal from "./AssignStaffModal";
@@ -35,7 +37,31 @@ export default function PatientProfile({ patientId: initialPatientId, role, init
 
   const [assignStaffOpen, setAssignStaffOpen] = useState(false);
   const [addRecordOpen, setAddRecordOpen] = useState(false);
+  const [addRecordOpen, setAddRecordOpen] = useState(false);
   const [addVitalsOpen, setAddVitalsOpen] = useState(false);
+
+  // Integrity Ledger State
+  const [integrityModalOpen, setIntegrityModalOpen] = useState(false);
+  const [integrityData, setIntegrityData] = useState([]);
+  const [integrityLoading, setIntegrityLoading] = useState(false);
+
+  const verifyIntegrity = async () => {
+     setIntegrityModalOpen(true);
+     setIntegrityLoading(true);
+     try {
+       const res = await api.get(`/records/integrity/verify/${patient?.patient_id}/`);
+       if (res.data?.success) {
+         setIntegrityData(res.data.data.records);
+         toast.success("Ledger audited successfully");
+       } else {
+         toast.error("Failed to verify blockchain ledger");
+       }
+     } catch (err) {
+       toast.error(err?.response?.data?.message || "Error verifying ledger");
+     } finally {
+       setIntegrityLoading(false);
+     }
+  };
 
   // Auto-switch tab and open vitals modal when ?tab=vitals is in the URL
   useEffect(() => {
@@ -262,6 +288,18 @@ export default function PatientProfile({ patientId: initialPatientId, role, init
 
       {activeTab === "RECORDS" && (
         <div className="animate-fadeIn">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+             <div>
+                <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">EHR Ledger</h3>
+                <p className="text-sm text-gray-500 font-medium mt-1">Chronological history of approved encounters.</p>
+             </div>
+             {(role === "ADMIN" || role === "HOSPITAL_ADMIN" || role === "DOCTOR") && (
+               <Button variant="outline" onClick={verifyIntegrity} className="font-bold text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 w-full sm:w-auto shadow-sm">
+                  <ShieldCheck className="w-4 h-4 mr-2" /> 
+                  Verify Cloud Ledger
+               </Button>
+             )}
+          </div>
           <Card className="overflow-hidden">
             {records?.length > 0 ? (
               <div className="divide-y divide-gray-100">
@@ -472,6 +510,67 @@ export default function PatientProfile({ patientId: initialPatientId, role, init
       <AssignStaffModal isOpen={assignStaffOpen} onClose={() => setAssignStaffOpen(false)} patientId={patientId} />
       <AddRecordModal isOpen={addRecordOpen} onClose={() => setAddRecordOpen(false)} patientId={patientId} />
       <AddVitalsModal isOpen={addVitalsOpen} onClose={() => setAddVitalsOpen(false)} patientId={patientId} />
+
+      <Modal isOpen={integrityModalOpen} onClose={() => setIntegrityModalOpen(false)} title="Blockchain Ledgers Verification">
+         <div className="space-y-6">
+            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl">
+               <div className="flex items-start gap-4">
+                  <ShieldCheck className="w-8 h-8 text-indigo-500 shrink-0" />
+                  <div>
+                     <h4 className="text-sm font-extrabold text-indigo-900">Cryptographic Integrity Engine</h4>
+                     <p className="text-xs text-indigo-700 mt-1 font-medium leading-relaxed">
+                        This system cryptographically recalculates the SHA-256 hash footprints for every approved medical record sequentially. It verifies that the stored immutable signature perfectly matches the database data, guaranteeing zero external tampering.
+                     </p>
+                  </div>
+               </div>
+            </div>
+
+            {integrityLoading ? (
+               <div className="space-y-4 py-8">
+                 <Skeleton className="h-16 w-full rounded-xl" />
+                 <Skeleton className="h-16 w-full rounded-xl opacity-70" />
+                 <Skeleton className="h-16 w-full rounded-xl opacity-40" />
+                 <p className="text-center text-sm font-bold text-gray-400 animate-pulse mt-4">Auditing Hash Chains...</p>
+               </div>
+            ) : integrityData.length === 0 ? (
+               <EmptyState icon={ShieldCheck} title="No Ledgers" description="There are no approved records in the ledger yet to verify." />
+            ) : (
+               <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                 {integrityData.map((rec, i) => (
+                    <div key={rec.record_id} className={`p-4 rounded-xl border ${(!rec.hash_valid || !rec.chain_valid) ? "bg-red-50 border-red-200" : "bg-white border-gray-100 shadow-sm"} flex flex-col gap-3 transition-all`}>
+                       <div className="flex justify-between items-center">
+                          <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Block #{i + 1} • Record ID {rec.record_id}</span>
+                          {rec.hash_valid && rec.chain_valid ? (
+                             <Badge variant="green" className="font-bold flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Intact</Badge>
+                          ) : (
+                             <Badge variant="red" className="font-bold flex items-center gap-1 animate-pulse"><XCircle className="w-3 h-3"/> COMPROMISED!</Badge>
+                          )}
+                       </div>
+                       
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-medium">
+                          <div className="bg-gray-50/50 p-2.5 rounded-lg border border-gray-100/50">
+                             <div className="text-gray-400 font-bold mb-1 ml-0.5">Payload Hash</div>
+                             <div className="flex items-center gap-2">
+                                {rec.hash_valid ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0"/> : <XCircle className="w-4 h-4 text-red-500 shrink-0"/>}
+                                <code className="text-gray-600 truncate flex-1 block" title={rec.record_hash}>{rec.record_hash?.substring(0, 24)}...</code>
+                             </div>
+                          </div>
+                          
+                          <div className="bg-gray-50/50 p-2.5 rounded-lg border border-gray-100/50">
+                             <div className="text-gray-400 font-bold mb-1 ml-0.5">Previous Block Link</div>
+                             <div className="flex items-center gap-2">
+                                {rec.chain_valid ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0"/> : <XCircle className="w-4 h-4 text-red-500 shrink-0"/>}
+                                <code className="text-gray-600 truncate flex-1 block" title={rec.prev_hash}>{rec.prev_hash?.substring(0, 24)}...</code>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                 ))}
+               </div>
+            )}
+         </div>
+      </Modal>
+
     </div>
   );
 }
