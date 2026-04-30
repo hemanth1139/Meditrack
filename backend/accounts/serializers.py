@@ -62,10 +62,29 @@ class RegisterSerializer(serializers.Serializer):
                 raise serializers.ValidationError(f"Missing patient fields: {', '.join(missing)}")
         return attrs
 
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+    def validate_medical_reg_number(self, value):
+        if value and User.objects.filter(medical_reg_number=value).exists():
+            raise serializers.ValidationError("A doctor with this registration number already exists.")
+        return value
+
     def create(self, validated_data):
         hospital_id = validated_data.pop("hospital_id", None)
         role = validated_data.pop("role")
         certificate_file = validated_data.pop("certificate", None)
+        
+        username = validated_data.get("username")
+        if username:
+            base_username = username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+            validated_data["username"] = username
 
         doctor_fields = [
             "specialization",
@@ -80,7 +99,10 @@ class RegisterSerializer(serializers.Serializer):
         password = validated_data.pop("password")
         hospital = None
         if hospital_id:
-            hospital = Hospital.objects.get(id=hospital_id)
+            try:
+                hospital = Hospital.objects.get(id=hospital_id)
+            except Hospital.DoesNotExist:
+                raise serializers.ValidationError({"hospital_id": "Selected hospital not found."})
         elif role != User.Roles.PATIENT:
             pass  # doctors need hospital; already validated above
 
