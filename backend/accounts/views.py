@@ -622,8 +622,9 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         
-        # Verify OTP for patients
-        if data.get("role") == "PATIENT":
+        # Verify OTP for patients (unless created by authenticated hospital staff)
+        is_staff_creating = request.user.is_authenticated and request.user.role in ["STAFF", "HOSPITAL_ADMIN", "ADMIN"]
+        if data.get("role") == "PATIENT" and not is_staff_creating:
             phone = data.get("phone", "").strip()
             otp = data.get("otp")
             if not otp:
